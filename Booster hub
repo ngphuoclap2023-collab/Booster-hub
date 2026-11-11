@@ -1,0 +1,386 @@
+--[[ 
+    BOOST HUB - Break and Steal an Egg
+    Tối ưu cho Delta Android
+    Tác giả: DeepSeek AI
+]]
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Xóa UI cũ nếu có
+if PlayerGui:FindFirstChild("BoostHub") then
+    PlayerGui.BoostHub:Destroy()
+end
+
+-- ================= CẤU HÌNH GIAO DIỆN =================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BoostHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+-- Nút ẩn/hiện (Icon tên lửa)
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 150)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleBtn.Text = "🚀" -- Icon tên lửa (Boost)
+ToggleBtn.TextSize = 24
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.Draggable = true
+local ToggleBtnCorner = Instance.new("UICorner", ToggleBtn)
+ToggleBtnCorner.CornerRadius = UDim.new(1, 0)
+
+-- Bảng Menu chính (Thiết kế ngang)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.Size = UDim2.new(0, 550, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+
+local MainCorner = Instance.new("UICorner", MainFrame)
+MainCorner.CornerRadius = UDim.new(0, 10)
+
+-- Tiêu đề
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Text = "🚀 BOOST HUB - BREAK & STEAL AN EGG"
+Title.TextColor3 = Color3.fromRGB(0, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+local TitleCorner = Instance.new("UICorner", Title)
+TitleCorner.CornerRadius = UDim.new(0, 10)
+
+-- Nút đóng
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = Title
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+local CloseCorner = Instance.new("UICorner", CloseBtn)
+CloseCorner.CornerRadius = UDim.new(0, 6)
+
+-- Layout ngang (Chia làm 2 cột)
+local HLayout = Instance.new("UIListLayout")
+HLayout.Parent = MainFrame
+HLayout.FillDirection = Enum.FillDirection.Horizontal
+HLayout.Padding = UDim.new(0, 10)
+HLayout.SortOrder = Enum.SortOrder.LayoutOrder
+HLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+HLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+-- Dời layout xuống dưới tiêu đề một chút
+local PaddingFrame = Instance.new("Frame", MainFrame)
+PaddingFrame.Size = UDim2.new(1, 0, 0, 40)
+PaddingFrame.BackgroundTransparency = 1
+PaddingFrame.LayoutOrder = -1
+
+-- Cột Trái (Chức năng chính & Hút kim cương)
+local LeftCol = Instance.new("Frame")
+LeftCol.Parent = MainFrame
+LeftCol.Size = UDim2.new(0.45, 0, 0.8, 0)
+LeftCol.BackgroundTransparency = 1
+LeftCol.LayoutOrder = 1
+
+-- Cột Phải (Cài đặt tối ưu)
+local RightCol = Instance.new("Frame")
+RightCol.Parent = MainFrame
+RightCol.Size = UDim2.new(0.45, 0, 0.8, 0)
+RightCol.BackgroundTransparency = 1
+RightCol.LayoutOrder = 2
+
+-- Hàm tạo Toggle Button (Có đổi màu)
+local function CreateToggle(parent, text, order)
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.Size = UDim2.new(1, 0, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.Text = text .. " [TẮT]"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 12
+    btn.LayoutOrder = order
+    btn.BorderSizePixel = 0
+    
+    local btnCorner = Instance.new("UICorner", btn)
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    
+    local padding = Instance.new("UIPadding", parent)
+    padding.PaddingBottom = UDim.new(0, 5)
+    
+    return btn
+end
+
+-- Hàm cập nhật trạng thái nút
+local function UpdateBtnState(btn, isOn, name)
+    if isOn then
+        btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- Màu xanh lá khi BẬT
+        btn.Text = name .. " [BẬT]"
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    else
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Màu xám khi TẮT
+        btn.Text = name .. " [TẮT]"
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+end
+
+-- ================= CHỨC NĂNG CỘT TRÁI =================
+local featureStates = {}
+local loops = {}
+
+-- 1. Tăng FPS & Giảm Ping (Tối ưu mạng)
+featureStates.FPS = false
+local BtnFPS = CreateToggle(LeftCol, "Tăng FPS / Giảm Ping", 1)
+BtnFPS.MouseButton1Click:Connect(function()
+    featureStates.FPS = not featureStates.FPS
+    UpdateBtnState(BtnFPS, featureStates.FPS, "Tăng FPS / Giảm Ping")
+    if featureStates.FPS then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = false
+            end
+        end
+        -- Xóa hạt bụi để giảm lag mạng
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") then
+                v.Enabled = false
+            end
+        end
+    else
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = true
+            end
+        end
+    end
+end)
+
+-- 2. X2 Swing Pickaxe (Đập cực nhanh)
+featureStates.Swing = false
+local BtnSwing = CreateToggle(LeftCol, "X2 Swing Pickaxe (Siêu Nhanh)", 2)
+BtnSwing.MouseButton1Click:Connect(function()
+    featureStates.Swing = not featureStates.Swing
+    UpdateBtnState(BtnSwing, featureStates.Swing, "X2 Swing Pickaxe (Siêu Nhanh)")
+end)
+
+-- 3. Tự động hút kim cương
+featureStates.AutoDiamond = false
+local BtnDiamond = CreateToggle(LeftCol, "Auto Hút Kim Cương", 3)
+BtnDiamond.MouseButton1Click:Connect(function()
+    featureStates.AutoDiamond = not featureStates.AutoDiamond
+    UpdateBtnState(BtnDiamond, featureStates.AutoDiamond, "Auto Hút Kim Cương")
+end)
+
+-- Ô nhập phạm vi hút kim cương
+local RangeFrame = Instance.new("Frame")
+RangeFrame.Parent = LeftCol
+RangeFrame.Size = UDim2.new(1, 0, 0, 30)
+RangeFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+RangeFrame.LayoutOrder = 4
+local RangeCorner = Instance.new("UICorner", RangeFrame)
+RangeCorner.CornerRadius = UDim.new(0, 6)
+
+local RangeLabel = Instance.new("TextLabel")
+RangeLabel.Parent = RangeFrame
+RangeLabel.Size = UDim2.new(0.5, 0, 1, 0)
+RangeLabel.BackgroundTransparency = 1
+RangeLabel.Text = "Phạm vi (100-1000):"
+RangeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+RangeLabel.Font = Enum.Font.Gotham
+RangeLabel.TextSize = 11
+
+local RangeInput = Instance.new("TextBox")
+RangeInput.Parent = RangeFrame
+RangeInput.Size = UDim2.new(0.4, 0, 0.8, 0)
+RangeInput.Position = UDim2.new(0.55, 0, 0.1, 0)
+RangeInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+RangeInput.Text = "500"
+RangeInput.TextColor3 = Color3.fromRGB(0, 255, 255)
+RangeInput.Font = Enum.Font.GothamBold
+RangeInput.TextSize = 12
+RangeInput.PlaceholderText = "100 - 1000"
+
+RangeInput.FocusLost:Connect(function()
+    local num = tonumber(RangeInput.Text)
+    if num then
+        if num < 100 then num = 100 end
+        if num > 1000 then num = 1000 end
+        RangeInput.Text = tostring(num)
+    else
+        RangeInput.Text = "500"
+    end
+end)
+
+-- ================= CHỨC NĂNG CỘT PHẢI (TỪ ẢNH) =================
+featureStates.Fullbright = false
+local BtnFullbright = CreateToggle(RightCol, "Fullbright (Sáng)", 1)
+BtnFullbright.MouseButton1Click:Connect(function()
+    featureStates.Fullbright = not featureStates.Fullbright
+    UpdateBtnState(BtnFullbright, featureStates.Fullbright, "Fullbright (Sáng)")
+    if featureStates.Fullbright then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 12
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+    end
+end)
+
+featureStates.NoClip = false
+local BtnNoClip = CreateToggle(RightCol, "No Clip (Xuyên Tường)", 2)
+BtnNoClip.MouseButton1Click:Connect(function()
+    featureStates.NoClip = not featureStates.NoClip
+    UpdateBtnState(BtnNoClip, featureStates.NoClip, "No Clip (Xuyên Tường)")
+end)
+
+featureStates.InfJump = false
+local BtnInfJump = CreateToggle(RightCol, "Infinite Jump (Nhảy Vô Hạn)", 3)
+BtnInfJump.MouseButton1Click:Connect(function()
+    featureStates.InfJump = not featureStates.InfJump
+    UpdateBtnState(BtnInfJump, featureStates.InfJump, "Infinite Jump (Nhảy Vô Hạn)")
+end)
+
+featureStates.AntiAFK = false
+local BtnAntiAFK = CreateToggle(RightCol, "Anti AFK (Chống Kick)", 4)
+BtnAntiAFK.MouseButton1Click:Connect(function()
+    featureStates.AntiAFK = not featureStates.AntiAFK
+    UpdateBtnState(BtnAntiAFK, featureStates.AntiAFK, "Anti AFK (Chống Kick)")
+    if featureStates.AntiAFK then
+        LocalPlayer.Idled:Connect(function()
+            local VirtualUser = game:GetService("VirtualUser")
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+end)
+
+-- ================= NÚT BẬT / TẮT TẤT CẢ =================
+local AllBtns = {BtnFPS, BtnSwing, BtnDiamond, BtnFullbright, BtnNoClip, BtnInfJump, BtnAntiAFK}
+
+local BtnAllOn = Instance.new("TextButton")
+BtnAllOn.Parent = MainFrame
+BtnAllOn.Size = UDim2.new(0.9, 0, 0, 30)
+BtnAllOn.Position = UDim2.new(0.05, 0, 1, -40)
+BtnAllOn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+BtnAllOn.Text = "BẬT TẤT CẢ CHỨC NĂNG"
+BtnAllOn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnAllOn.Font = Enum.Font.GothamBold
+BtnAllOn.TextSize = 13
+local AllCorner = Instance.new("UICorner", BtnAllOn)
+AllCorner.CornerRadius = UDim.new(0, 6)
+
+BtnAllOn.MouseButton1Click:Connect(function()
+    for _, btn in pairs(AllBtns) do
+        if btn.BackgroundColor3 == Color3.fromRGB(50, 50, 50) then
+            btn.MouseButton1Click:Fire() -- Tự động click nếu đang tắt
+        end
+    end
+end)
+
+local BtnAllOff = Instance.new("TextButton")
+BtnAllOff.Parent = MainFrame
+BtnAllOff.Size = UDim2.new(0.9, 0, 0, 30)
+BtnAllOff.Position = UDim2.new(0.05, 0, 1, -5)
+BtnAllOff.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+BtnAllOff.Text = "TẮT TẤT CẢ CHỨC NĂNG"
+BtnAllOff.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnAllOff.Font = Enum.Font.GothamBold
+BtnAllOff.TextSize = 13
+local AllCorner2 = Instance.new("UICorner", BtnAllOff)
+AllCorner2.CornerRadius = UDim.new(0, 6)
+
+BtnAllOff.MouseButton1Click:Connect(function()
+    for _, btn in pairs(AllBtns) do
+        if btn.BackgroundColor3 == Color3.fromRGB(0, 200, 0) then
+            btn.MouseButton1Click:Fire() -- Tự động click nếu đang bật
+        end
+    end
+end)
+
+-- Ẩn/Hiện Menu
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+-- ================= VÒNG LẶP XỬ LÝ LOGIC =================
+-- Xử lý Swing Pickaxe và Auto Diamond
+task.spawn(function()
+    while task.wait() do
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            
+            -- 1. X2 Swing Pickaxe
+            if featureStates.Swing then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool and (tool.Name:lower():find("pick") or tool.Name:lower():find("pickaxe")) then
+                    -- Kích hoạt tool liên tục với tốc độ cực cao
+                    tool:Activate()
+                    task.wait(0.05) -- Chờ 0.05s để tránh bị game kick vì spam quá nhanh
+                end
+            end
+            
+            -- 2. Auto Hút Kim Cương
+            if featureStates.AutoDiamond then
+                local range = tonumber(RangeInput.Text) or 500
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v:IsA("BasePart") and (v.Name:lower():find("diamond") or v.Name:lower():find("gem") or v.Name:lower():find("kim cương")) then
+                        local distance = (v.Position - hrp.Position).Magnitude
+                        if distance <= range then
+                            -- Teleport kim cương thẳng vào người người chơi
+                            v.CFrame = hrp.CFrame
+                        end
+                    end
+                end
+            end
+            
+            -- 3. No Clip
+            if featureStates.NoClip then
+                for _, v in pairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Xử lý Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if featureStates.InfJump then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            char:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end
+end)
+
+print("🚀 Boost Hub đã tải thành công!")
