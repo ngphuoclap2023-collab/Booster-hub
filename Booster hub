@@ -1,597 +1,282 @@
 --[[ 
-    BOOSTER - ULTIMATE FILTER (RTX UI)
-    Tính năng: Auto Tìm Base, Instant Steal + Tele, Bộ lọc Pet (K, M, B, T), Auto Equip Best
+    BOOSTER HUB - TỐI ƯU HÓA HIỆU SUẤT
+    Đã Việt hóa và thêm các tính năng từ ảnh gửi
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-if PlayerGui:FindFirstChild("BoostHub") then
-    PlayerGui.BoostHub:Destroy()
+if PlayerGui:FindFirstChild("BoosterHub") then
+    PlayerGui.BoosterHub:Destroy()
 end
 
--- ================= BIẾN TOÀN CỤC =================
-local featureStates = {
-    AutoFarm = false,
-    FarmMode = "Cuối Map",
-    WeatherOnly = false,
-    InstantSteal = false,
-    TeleOnSteal = false,
-    AutoEquipBest = false,
-    FPS = false,
-    Swing = false,
-    AutoDiamond = false,
-    Fullbright = false,
-    NoClip = false,
-    InfJump = false,
-    AntiAFK = false,
-    SavedBasePos = nil
+-- ================= BIẾN TRẠNG THÁI =================
+local States = {
+    FPSBoost = false,
+    NoBackpack = false,
+    BlackScreen = false,
+    StartupBoost = false
 }
+local SavedVisuals = {} -- Lưu lại các hiệu ứng đã xóa để có thể khôi phục
 
-local filters = {
-    MaxBreakTime = 60,
-    MinEggLuck = 0,
-    EggRarity = "",
-    EggArea = "",
-    MinGen = 0,
-    MinWeight = 0,
-    MaxWeight = 999999999,
-    AlwaysStealMutations = false
-}
-
-local WeatherList = {"Thunderstorm", "Blizzard", "Angelic", "Windy", "Time Fracture", "Hacker Takeover", "Acidic Storm", "Whirlwind"}
-
-local function ParseNumber(str)
-    if not str then return 0 end
-    str = tostring(str):lower():gsub(",", "")
-    local num = tonumber(string.match(str, "[%d%.]+"))
-    if not num then return 0 end
-    if str:find("k") then return num * 1e3 end
-    if str:find("m") then return num * 1e6 end
-    if str:find("b") then return num * 1e9 end
-    if str:find("t") then return num * 1e12 end
-    if str:find("qd") then return num * 1e15 end
-    if str:find("qn") then return num * 1e18 end
-    if str:find("sx") then return num * 1e21 end
-    return num
-end
-
--- Hàm tự động tìm Base (SpawnLocation hoặc khu vực Safe)
-local function FindAutoBase()
-    -- 1. Tìm SpawnLocation trước (chuẩn nhất)
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("SpawnLocation") then
-            return v.CFrame + Vector3.new(0, 3, 0)
-        end
-    end
-    -- 2. Nếu không có, tìm Part/Model có tên chứa Base, Safe, Home
-    for _, v in pairs(Workspace:GetDescendants()) do
-        local name = v.Name:lower()
-        if (name:find("base") or name:find("safezone") or name:find("home")) and (v:IsA("Part") or v:IsA("Model")) then
-            local pos = (v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart.Position) or (v:IsA("Part") and v.Position)
-            if pos then return CFrame.new(pos + Vector3.new(0, 5, 0)) end
-        end
-    end
-    return nil
-end
-
--- ================= GIAO DIỆN RTX =================
+-- ================= GIAO DIỆN CHÍNH =================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BoostHub"
+ScreenGui.Name = "BoosterHub"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
-local ToggleBtn = Instance.new("TextButton")
+-- Nút Toggle (Đã đẩy lên cao)
+local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = ScreenGui
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 150)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ToggleBtn.Text = "🚀"
-ToggleBtn.TextSize = 28
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.FredokaOne
+ToggleBtn.Position = UDim2.new(0, 10, 0, 80) -- ĐÃ ĐẨY CAO LÊN (Y=80)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Draggable = true
-ToggleBtn.AutoButtonColor = false
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 12)
+ToggleBtn.Image = "rbxassetid://134976504282359" -- Logo chữ B
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 10)
 local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
 ToggleStroke.Color = Color3.fromRGB(0, 255, 255)
 ToggleStroke.Thickness = 2
-local ToggleGradient = Instance.new("UIGradient", ToggleBtn)
-ToggleGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 60, 60)), ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 10))}
-ToggleGradient.Rotation = 45
-local TextStroke = Instance.new("UIStroke", ToggleBtn)
-TextStroke.Color = Color3.fromRGB(0, 255, 255)
-TextStroke.Thickness = 1
-TextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 
+-- Bảng Menu (Hình vuông bo góc)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 500, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 480, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -175)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Visible = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIScale", MainFrame).Scale = 0.9
 
-local UIScale = Instance.new("UIScale")
-UIScale.Parent = MainFrame
-UIScale.Scale = 0.9
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = Color3.fromRGB(0, 255, 255)
+MainStroke.Thickness = 1.5
 
+-- Tiêu đề
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Title.Text = "🚀 BOOSTER - ULTIMATE FILTER"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Text = "🚀 BOOSTER - HIỆU SUẤT"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
+Title.TextSize = 15
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 12)
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = Title
-CloseBtn.Size = UDim2.new(0, 25, 0, 25)
-CloseBtn.Position = UDim2.new(1, -30, 0, 5)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
 
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Parent = MainFrame
-ContentFrame.Size = UDim2.new(1, -20, 1, -80)
-ContentFrame.Position = UDim2.new(0, 10, 0, 40)
-ContentFrame.BackgroundTransparency = 1
+-- Vùng chứa tính năng (Scrolling)
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Parent = MainFrame
+ScrollFrame.Size = UDim2.new(1, -20, 1, -90)
+ScrollFrame.Position = UDim2.new(0, 10, 0, 45)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
+ScrollFrame.ScrollBarThickness = 3
+Instance.new("UIListLayout", ScrollFrame).Padding = UDim.new(0, 8)
 
-local ContentLayout = Instance.new("UIListLayout")
-ContentLayout.Parent = ContentFrame
-ContentLayout.FillDirection = Enum.FillDirection.Horizontal
-ContentLayout.Padding = UDim.new(0, 10)
-ContentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local LeftCol = Instance.new("ScrollingFrame")
-LeftCol.Parent = ContentFrame
-LeftCol.Size = UDim2.new(0.48, 0, 1, 0)
-LeftCol.BackgroundTransparency = 1
-LeftCol.BorderSizePixel = 0
-LeftCol.CanvasSize = UDim2.new(0, 0, 0, 700)
-LeftCol.ScrollBarThickness = 2
-Instance.new("UIListLayout", LeftCol).Padding = UDim.new(0, 5)
-
-local RightCol = Instance.new("ScrollingFrame")
-RightCol.Parent = ContentFrame
-RightCol.Size = UDim2.new(0.48, 0, 1, 0)
-RightCol.BackgroundTransparency = 1
-RightCol.BorderSizePixel = 0
-RightCol.CanvasSize = UDim2.new(0, 0, 0, 700)
-RightCol.ScrollBarThickness = 2
-Instance.new("UIListLayout", RightCol).Padding = UDim.new(0, 5)
-
-local function CreateToggle(parent, text, order)
-    local btn = Instance.new("TextButton")
-    btn.Parent = parent
-    btn.Size = UDim2.new(1, 0, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.Text = text .. " [TẮT]"
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 11
-    btn.LayoutOrder = order
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    return btn
-end
-
-local function UpdateBtnState(btn, isOn, name)
-    if isOn then
-        btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        btn.Text = name .. " [BẬT]"
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        btn.Text = name .. " [TẮT]"
-        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    end
-end
-
-local function CreateInput(parent, labelText, defaultText, order, callback)
+-- Hàm tạo nút Toggle
+local function CreateToggle(parent, text, desc, order, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 28)
+    frame.Size = UDim2.new(1, 0, 0, 55)
     frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     frame.LayoutOrder = order
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local title = Instance.new("TextLabel")
+    title.Parent = frame
+    title.Size = UDim2.new(0.8, 0, 0, 25)
+    title.Position = UDim2.new(0, 10, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = text
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 12
+    title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Parent = frame
+    descLabel.Size = UDim2.new(0.8, 0, 0, 20)
+    descLabel.Position = UDim2.new(0, 10, 0, 28)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = desc
+    descLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 10
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = frame
+    btn.Size = UDim2.new(0, 50, 0, 25)
+    btn.Position = UDim2.new(1, -60, 0.5, -12.5)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = "TẮT"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 11
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+    btn.MouseButton1Click:Connect(function()
+        local isOn = btn.Text == "TẮT"
+        callback(isOn)
+        if isOn then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            btn.Text = "BẬT"
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            btn.Text = "TẮT"
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end)
+end
+
+-- Hàm tạo Ô nhập liệu
+local function CreateInput(parent, text, defaultVal, order, callback)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    frame.LayoutOrder = order
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
-    label.Text = labelText
+    label.Text = text
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 10
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Position = UDim2.new(0, 5, 0, 0)
 
     local input = Instance.new("TextBox")
     input.Parent = frame
-    input.Size = UDim2.new(0.45, 0, 0.7, 0)
-    input.Position = UDim2.new(0.52, 0, 0.15, 0)
+    input.Size = UDim2.new(0, 80, 0, 28)
+    input.Position = UDim2.new(1, -90, 0.5, -14)
     input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    input.Text = tostring(defaultText)
+    input.Text = tostring(defaultVal)
     input.TextColor3 = Color3.fromRGB(0, 255, 255)
     input.Font = Enum.Font.GothamBold
-    input.TextSize = 11
-    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 4)
+    input.TextSize = 12
+    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
 
     input.FocusLost:Connect(function()
-        if callback then callback(input.Text) end
+        callback(input.Text)
     end)
-    return input
 end
 
--- ================= CỘT TRÁI: FARM & STEAL =================
-local BtnAutoFarm = CreateToggle(LeftCol, "Bật Auto Farm", 1)
-BtnAutoFarm.MouseButton1Click:Connect(function()
-    featureStates.AutoFarm = not featureStates.AutoFarm
-    UpdateBtnState(BtnAutoFarm, featureStates.AutoFarm, "Bật Auto Farm")
-end)
+-- ================= KHU VỰC TÍNH NĂNG =================
 
-local BtnInstantSteal = CreateToggle(LeftCol, "Instant Steal (Nhặt Tức Thì)", 2)
-BtnInstantSteal.MouseButton1Click:Connect(function()
-    featureStates.InstantSteal = not featureStates.InstantSteal
-    UpdateBtnState(BtnInstantSteal, featureStates.InstantSteal, "Instant Steal (Nhặt Tức Thì)")
-end)
-
-local BtnTeleOnSteal = CreateToggle(LeftCol, "Tele Về Base Khi Nhặt", 3)
-BtnTeleOnSteal.MouseButton1Click:Connect(function()
-    featureStates.TeleOnSteal = not featureStates.TeleOnSteal
-    UpdateBtnState(BtnTeleOnSteal, featureStates.TeleOnSteal, "Tele Về Base Khi Nhặt")
-end)
-
--- Nút tự động tìm Base
-local BtnAutoFindBase = CreateToggle(LeftCol, "Auto Tìm Base (Không cần lưu)", 4)
-BtnAutoFindBase.MouseButton1Click:Connect(function()
-    local baseCFrame = FindAutoBase()
-    if baseCFrame then
-        featureStates.SavedBasePos = baseCFrame
-        UpdateBtnState(BtnAutoFindBase, true, "Đã Tìm Thấy Base!")
-        task.wait(1.5)
-        UpdateBtnState(BtnAutoFindBase, false, "Auto Tìm Base (Không cần lưu)")
+-- 1. Khởi động nhanh
+CreateToggle(ScrollFrame, "Khởi Động Nhanh (Startup Boost)", "Giảm đồ họa tối đa ngay khi bật, xóa sương mù", 1, function(v)
+    States.StartupBoost = v
+    if v then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
     else
-        UpdateBtnState(BtnAutoFindBase, false, "Lỗi: Không tìm thấy Base")
-        task.wait(1.5)
-        UpdateBtnState(BtnAutoFindBase, false, "Auto Tìm Base (Không cần lưu)")
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
+        Lighting.GlobalShadows = true
+        Lighting.FogEnd = 100000
     end
 end)
 
-local BtnSaveBase = CreateToggle(LeftCol, "📍 Lưu Vị Trí Base Thủ Công", 5)
-BtnSaveBase.MouseButton1Click:Connect(function()
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        featureStates.SavedBasePos = char.HumanoidRootPart.CFrame
-        UpdateBtnState(BtnSaveBase, true, "📍 Đã Lưu Base")
-        task.wait(1)
-        UpdateBtnState(BtnSaveBase, false, "📍 Lưu Vị Trí Base Thủ Công")
+-- 2. Ẩn giao diện túi đồ
+CreateToggle(ScrollFrame, "Ẩn Giao Diện Túi Đồ (No Backpack)", "Ẩn UI ba lô và các nút thừa của game", 2, function(v)
+    States.NoBackpack = v
+    local backpack = PlayerGui:FindFirstChild("Backpack")
+    if backpack then
+        backpack.Enabled = not v
     end
 end)
 
-local BtnWeather = CreateToggle(LeftCol, "Chỉ Farm Khi Có Thời Tiết", 6)
-BtnWeather.MouseButton1Click:Connect(function()
-    featureStates.WeatherOnly = not featureStates.WeatherOnly
-    UpdateBtnState(BtnWeather, featureStates.WeatherOnly, "Chỉ Farm Khi Có Thời Tiết")
-end)
-
-local BtnModeEndMap = CreateToggle(LeftCol, "Ưu tiên Cuối Map", 7)
-BtnModeEndMap.MouseButton1Click:Connect(function()
-    featureStates.FarmMode = featureStates.FarmMode == "Cuối Map" and "To Nhất" or "Cuối Map"
-    UpdateBtnState(BtnModeEndMap, featureStates.FarmMode == "Cuối Map", "Ưu tiên Cuối Map")
-end)
-
-local EggFilterLabel = Instance.new("TextLabel")
-EggFilterLabel.Parent = LeftCol
-EggFilterLabel.Size = UDim2.new(1, 0, 0, 20)
-EggFilterLabel.BackgroundTransparency = 1
-EggFilterLabel.Text = "--- BỘ LỌC TRỨNG ---"
-EggFilterLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-EggFilterLabel.Font = Enum.Font.GothamBold
-EggFilterLabel.TextSize = 11
-EggFilterLabel.LayoutOrder = 8
-
-CreateInput(LeftCol, "Max Break Time (s):", 60, 9, function(val) filters.MaxBreakTime = ParseNumber(val) end)
-CreateInput(LeftCol, "Min Luck:", 0, 10, function(val) filters.MinEggLuck = ParseNumber(val) end)
-CreateInput(LeftCol, "Rarity (vd: Secret):", "", 11, function(val) filters.EggRarity = val end)
-CreateInput(LeftCol, "Area (vd: Fantasy):", "", 12, function(val) filters.EggArea = val end)
-
--- ================= CỘT PHẢI: PET FILTER & HỖ TRỢ =================
-local PetFilterLabel = Instance.new("TextLabel")
-PetFilterLabel.Parent = RightCol
-PetFilterLabel.Size = UDim2.new(1, 0, 0, 20)
-PetFilterLabel.BackgroundTransparency = 1
-PetFilterLabel.Text = "--- BỘ LỌC PET ---"
-PetFilterLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-PetFilterLabel.Font = Enum.Font.GothamBold
-PetFilterLabel.TextSize = 11
-PetFilterLabel.LayoutOrder = 1
-
-CreateInput(RightCol, "Min Gen (vd: 15T):", 0, 2, function(val) filters.MinGen = ParseNumber(val) end)
-CreateInput(RightCol, "Min Weight (kg):", 0, 3, function(val) filters.MinWeight = ParseNumber(val) end)
-CreateInput(RightCol, "Max Weight (kg):", 999999, 4, function(val) filters.MaxWeight = ParseNumber(val) end)
-
-local BtnMutations = CreateToggle(RightCol, "Luôn Nhặt Mutation", 5)
-BtnMutations.MouseButton1Click:Connect(function()
-    filters.AlwaysStealMutations = not filters.AlwaysStealMutations
-    UpdateBtnState(BtnMutations, filters.AlwaysStealMutations, "Luôn Nhặt Mutation")
-end)
-
-local BtnAutoEquip = CreateToggle(RightCol, "Auto Equip Best (Tự Đổi Pet)", 6)
-BtnAutoEquip.MouseButton1Click:Connect(function()
-    featureStates.AutoEquipBest = not featureStates.AutoEquipBest
-    UpdateBtnState(BtnAutoEquip, featureStates.AutoEquipBest, "Auto Equip Best (Tự Đổi Pet)")
-end)
-
-local BtnFPS = CreateToggle(RightCol, "Tăng FPS / Giảm Ping", 7)
-BtnFPS.MouseButton1Click:Connect(function()
-    featureStates.FPS = not featureStates.FPS
-    UpdateBtnState(BtnFPS, featureStates.FPS, "Tăng FPS / Giảm Ping")
-    if featureStates.FPS then settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 else settings().Rendering.QualityLevel = Enum.QualityLevel.Level08 end
-end)
-
-local BtnSwing = CreateToggle(RightCol, "X2 Swing Pickaxe", 8)
-BtnSwing.MouseButton1Click:Connect(function()
-    featureStates.Swing = not featureStates.Swing
-    UpdateBtnState(BtnSwing, featureStates.Swing, "X2 Swing Pickaxe")
-end)
-
-local BtnFullbright = CreateToggle(RightCol, "Fullbright (Sáng)", 9)
-BtnFullbright.MouseButton1Click:Connect(function()
-    featureStates.Fullbright = not featureStates.Fullbright
-    UpdateBtnState(BtnFullbright, featureStates.Fullbright, "Fullbright (Sáng)")
-    if featureStates.Fullbright then
-        Lighting.Brightness = 2; Lighting.ClockTime = 12; Lighting.FogEnd = 100000; Lighting.GlobalShadows = false
+-- 3. Tăng cường FPS
+CreateToggle(ScrollFrame, "Tăng Cường FPS (Xóa Hiệu Ứng)", "Xóa hạt, đèn, pet người khác, hiệu ứng trứng", 3, function(v)
+    States.FPSBoost = v
+    if v then
+        -- Xóa các hiệu ứng hạt, khói, lửa
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("PointLight") or obj:IsA("SpotLight") then
+                if obj.Enabled then
+                    obj.Enabled = false
+                    table.insert(SavedVisuals, obj)
+                end
+            end
+        end
+        -- Ẩn pet của người chơi khác
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                for _, obj in pairs(plr.Character:GetDescendants()) do
+                    if obj:IsA("Model") and (obj.Name:lower():find("pet") or obj.Name:lower():find("guard")) then
+                        obj.Parent = nil -- Xóa tạm thời
+                    end
+                end
+            end
+        end
     else
-        Lighting.Brightness = 1; Lighting.GlobalShadows = true
-    end
-end)
-
-local BtnNoClip = CreateToggle(RightCol, "No Clip (Xuyên Tường)", 10)
-BtnNoClip.MouseButton1Click:Connect(function()
-    featureStates.NoClip = not featureStates.NoClip
-    UpdateBtnState(BtnNoClip, featureStates.NoClip, "No Clip (Xuyên Tường)")
-end)
-
-local BtnAntiAFK = CreateToggle(RightCol, "Anti AFK (Chống Kick)", 11)
-BtnAntiAFK.MouseButton1Click:Connect(function()
-    featureStates.AntiAFK = not featureStates.AntiAFK
-    UpdateBtnState(BtnAntiAFK, featureStates.AntiAFK, "Anti AFK (Chống Kick)")
-    if featureStates.AntiAFK then
-        LocalPlayer.Idled:Connect(function()
-            local VirtualUser = game:GetService("VirtualUser")
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
-end)
-
--- Nút Bật / Tắt Tất Cả
-local AllBtns = {BtnAutoFarm, BtnInstantSteal, BtnTeleOnSteal, BtnWeather, BtnAutoEquip, BtnFPS, BtnSwing, BtnFullbright, BtnNoClip, BtnAntiAFK}
-local BottomFrame = Instance.new("Frame")
-BottomFrame.Parent = MainFrame
-BottomFrame.Size = UDim2.new(1, -20, 0, 30)
-BottomFrame.Position = UDim2.new(0, 10, 1, -35)
-BottomFrame.BackgroundTransparency = 1
-local BottomLayout = Instance.new("UIListLayout", BottomFrame)
-BottomLayout.FillDirection = Enum.FillDirection.Horizontal
-BottomLayout.Padding = UDim.new(0, 10)
-BottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local BtnAllOn = Instance.new("TextButton")
-BtnAllOn.Parent = BottomFrame
-BtnAllOn.Size = UDim2.new(0.45, 0, 1, 0)
-BtnAllOn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-BtnAllOn.Text = "BẬT TẤT CẢ"
-BtnAllOn.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnAllOn.Font = Enum.Font.GothamBold
-BtnAllOn.TextSize = 12
-Instance.new("UICorner", BtnAllOn).CornerRadius = UDim.new(0, 6)
-BtnAllOn.MouseButton1Click:Connect(function()
-    for _, btn in pairs(AllBtns) do if btn.Text:find("TẮT") then firesignal(btn.MouseButton1Click) end end
-end)
-
-local BtnAllOff = Instance.new("TextButton")
-BtnAllOff.Parent = BottomFrame
-BtnAllOff.Size = UDim2.new(0.45, 0, 1, 0)
-BtnAllOff.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-BtnAllOff.Text = "TẮT TẤT CẢ"
-BtnAllOff.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnAllOff.Font = Enum.Font.GothamBold
-BtnAllOff.TextSize = 12
-Instance.new("UICorner", BtnAllOff).CornerRadius = UDim.new(0, 6)
-BtnAllOff.MouseButton1Click:Connect(function()
-    for _, btn in pairs(AllBtns) do if btn.Text:find("BẬT") then firesignal(btn.MouseButton1Click) end end
-end)
-
-ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
-CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
-
--- ================= LOGIC QUÉT & LỌC =================
-local function HasGoodWeather()
-    for _, weather in pairs(WeatherList) do
-        if Workspace:FindFirstChild(weather) or ReplicatedStorage:FindFirstChild(weather) then return true end
-    end
-    return false
-end
-
-local function GetPetStat(petModel, statName)
-    for _, v in pairs(petModel:GetDescendants()) do
-        if v:IsA("ValueBase") and v.Name:lower():find(statName:lower()) then
-            return ParseNumber(v.Value)
+        -- Khôi phục hiệu ứng
+        for _, obj in pairs(SavedVisuals) do
+            if obj and obj.Parent then obj.Enabled = true end
         end
-    end
-    return nil
-end
-
-local function PassesPetFilter(petModel)
-    if filters.AlwaysStealMutations then
-        if petModel.Name:lower():find("mutation") or petModel.Name:lower():find("mutated") then return true end
-    end
-
-    local gen = GetPetStat(petModel, "generation") or GetPetStat(petModel, "gen") or GetPetStat(petModel, "income") or GetPetStat(petModel, "power") or GetPetStat(petModel, "damage")
-    local weight = GetPetStat(petModel, "weight")
-
-    if gen and gen > 0 then
-        if gen < filters.MinGen then return false end
-    end
-
-    if weight and weight > 0 then
-        if weight < filters.MinWeight or weight > filters.MaxWeight then return false end
-    end
-
-    return true
-end
-
-local function ClickEquipBest()
-    for _, gui in pairs(PlayerGui:GetDescendants()) do
-        if gui:IsA("TextButton") and gui.Text:lower():find("equip best") then
-            firesignal(gui.MouseButton1Click)
-            return true
-        end
-    end
-    return false
-end
-
-local function GetTargetEgg()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local hrp = char.HumanoidRootPart
-    
-    local bestEgg = nil
-    local bestValue = -math.huge
-
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "Egg" and (v:IsA("Model") or v:IsA("BasePart")) then
-            local passFilter = true
-            if filters.EggRarity ~= "" and not v.Name:lower():find(filters.EggRarity:lower()) then passFilter = false end
-            if filters.EggArea ~= "" and not v.Parent.Name:lower():find(filters.EggArea:lower()) then passFilter = false end
-            
-            if passFilter then
-                local pos = (v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart.Position) or (v:IsA("BasePart") and v.Position)
-                if pos then
-                    if featureStates.FarmMode == "Cuối Map" then
-                        if pos.Z > bestValue then bestValue = pos.Z; bestEgg = v end
-                    else
-                        local dist = (pos - hrp.Position).Magnitude
-                        if -dist > bestValue then bestValue = -dist; bestEgg = v end
-                    end
-                end
-            end
-        end
-    end
-    return bestEgg
-end
-
-local function TweenTo(targetPos)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local hrp = char.HumanoidRootPart
-        local distance = (targetPos - hrp.Position).Magnitude
-        if distance > 5 then
-            local tween = TweenService:Create(hrp, TweenInfo.new(distance / 150, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-            tween:Play(); tween.Completed:Wait()
-        end
-    end
-end
-
--- ================= VÒNG LẶP CHÍNH =================
-task.spawn(function()
-    while task.wait() do
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            
-            if featureStates.AutoEquipBest then
-                if tick() % 3 < 1 then ClickEquipBest() end
-            end
-
-            if featureStates.AutoFarm then
-                local canFarm = true
-                if featureStates.WeatherOnly then canFarm = HasGoodWeather() end
-
-                if canFarm then
-                    local targetEgg = GetTargetEgg()
-                    if targetEgg then
-                        local eggPos = (targetEgg:IsA("Model") and targetEgg:FindFirstChild("HumanoidRootPart") and targetEgg.HumanoidRootPart.Position) or (targetEgg:IsA("BasePart") and targetEgg.Position)
-                        if eggPos then
-                            TweenTo(eggPos + Vector3.new(0, 3, 0))
-                            local tool = char:FindFirstChildOfClass("Tool")
-                            if tool and (tool.Name:lower():find("pick") or tool.Name:lower():find("pickaxe")) then tool:Activate() end
-                        end
-                    end
-                end
-            end
-
-            if featureStates.InstantSteal then
-                for _, prompt in pairs(Workspace:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") and prompt.Enabled then
-                        local parent = prompt.Parent
-                        if parent and (parent.Name:lower():find("pet") or parent.Name:lower():find("egg")) then
-                            if PassesPetFilter(parent) then
-                                fireproximityprompt(prompt)
-                                task.wait(0.2)
-                                
-                                if featureStates.TeleOnSteal then
-                                    -- Nếu chưa có SavedBasePos, tự động tìm Base
-                                    if not featureStates.SavedBasePos then
-                                        featureStates.SavedBasePos = FindAutoBase()
-                                    end
-                                    -- Nếu tìm thấy Base, tele về
-                                    if featureStates.SavedBasePos then
-                                        local currentChar = LocalPlayer.Character
-                                        if currentChar and currentChar:FindFirstChild("HumanoidRootPart") then
-                                            currentChar.HumanoidRootPart.CFrame = featureStates.SavedBasePos
-                                        end
-                                    end
-                                end
-                                
-                                if featureStates.AutoEquipBest then ClickEquipBest() end
-                            end
-                        end
-                    end
-                end
-            end
-
-            if featureStates.Swing and not featureStates.AutoFarm then
-                local tool = char:FindFirstChildOfClass("Tool")
-                if tool and (tool.Name:lower():find("pick") or tool.Name:lower():find("pickaxe")) then
-                    tool:Activate(); task.wait(0.05)
-                end
-            end
-
-            if featureStates.NoClip then
-                for _, v in pairs(char:GetDescendants()) do
-                    if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
-                end
-            end
-        end
+        table.clear(SavedVisuals)
+        -- Lưu ý: Pet người khác đã xóa thì không khôi phục được bằng script này (cần chơi lại)
     end
 end)
 
-UserInputService.JumpRequest:Connect(function()
-    if featureStates.InfJump then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChildOfClass("Humanoid") then char:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping") end
+-- 4. Màn hình đen (Chạy ngầm)
+CreateToggle(ScrollFrame, "Màn Hình Đen (Chạy Ngầm/Treo Máy)", "Tắt kết xuất 3D, giữ script chạy ngầm", 4, function(v)
+    States.BlackScreen = v
+    if v then
+        local blackGui = Instance.new("Frame")
+        blackGui.Name = "BoosterBlackScreen"
+        blackGui.Size = UDim2.new(1, 0, 1, 0)
+        blackGui.BackgroundColor3 = Color3.new(0, 0, 0)
+        blackGui.BorderSizePixel = 0
+        blackGui.ZIndex = 99999
+        blackGui.Parent = ScreenGui
+    else
+        local bg = ScreenGui:FindFirstChild("BoosterBlackScreen")
+        if bg then bg:Destroy() end
     end
+end)
+
+-- 5. Giới hạn FPS
+CreateInput(ScrollFrame, "Giới Hạn FPS (FPS Limit):", 60, 5, function(val)
+    local num = tonumber(val)
+    if num and num > 0 then
+        -- Lệnh setfpscap chỉ hoạt động trên một số Executor (như Delta)
+        pcall(function() setfpscap(num) end)
+    end
+end)
+
+-- ================= CHỨC NĂNG ẨN/HIỆN =================
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
 end)
