@@ -328,4 +328,4 @@ UserInputService.JumpRequest:Connect(function()
             char:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
         end
     end
-end).
+end)
