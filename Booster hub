@@ -2,6 +2,7 @@
     ⚡ BOOST EXECUTE MENU ⚡
     Game: Break and Steal an Egg
     Executor: Delta Android
+    Version: 2.0 (No Swing Max | X2 = 0.01)
 ]]
 
 local Players       = game:GetService("Players")
@@ -45,8 +46,8 @@ tStroke.Thickness = 2
 -- Panel chính (ngang)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 480, 0, 130)
-mainFrame.Position = UDim2.new(0.5, -240, 0, 30)
+mainFrame.Size = UDim2.new(0, 400, 0, 130)
+mainFrame.Position = UDim2.new(0.5, -200, 0, 30)
 mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
@@ -62,7 +63,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 28)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 title.BorderSizePixel = 0
-title.Text = "⚡  BOOST EXECUTE  ⚡"
+title.Text = "⚡  BOOST EXECUTE v2  ⚡"
 title.TextColor3 = Color3.fromRGB(80, 200, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 15
@@ -154,7 +155,6 @@ local states = {
     fps   = false,
     ping  = false,
     x2    = false,
-    max   = false,
 }
 
 -- ====================== CHỨC NĂNG TĂNG FPS ======================
@@ -202,20 +202,17 @@ local function setPing(on)
     states.ping = on
     if on then
         pcall(function()
-            -- Tắt hiệu ứng nặng giúp giảm tải network & render
-            for _, v in ipairs(game:GetDescendants()) do
+            for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("Trail") or v:IsA("Beam") then
                     v.Enabled = false
                 end
             end
-            -- Tắt shadow mềm (giảm tải GPU/CPU)
             pcall(function() Lighting.ShadowSoftness = 0 end)
-            -- Bật sleep cho physics idle -> giảm traffic
             pcall(function() settings().Physics.AllowSleep = true end)
         end)
     else
         pcall(function()
-            for _, v in ipairs(game:GetDescendants()) do
+            for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("Trail") or v:IsA("Beam") then
                     v.Enabled = true
                 end
@@ -225,67 +222,53 @@ local function setPing(on)
     end
 end
 
--- ====================== SWING PICKAXE ======================
+-- ====================== X2 SWING (cooldown = 0.01) ======================
 local swingConn
 
 local function getPickaxe()
     local char = player.Character
     if not char then return nil end
-    local tool = char:FindFirstChildOfClass("Tool")
-    if tool and (tool.Name:lower():find("pick") or tool.Name:lower():find("axe")) then
-        return tool
-    end
-    return tool
+    return char:FindFirstChildOfClass("Tool")
 end
 
-local function applySwing(mode) -- "x2" | "max" | nil
+local function applySwing(on)
     if swingConn then swingConn:Disconnect(); swingConn = nil end
-    if not mode then return end
+    if not on then return end
 
     swingConn = RunService.Heartbeat:Connect(function()
         local tool = getPickaxe()
         if not tool then return end
 
-        -- 1) Hạ cooldown của tool
+        -- 1) Ép cooldown NumberValue về 0.01
         for _, v in ipairs(tool:GetDescendants()) do
             if v:IsA("NumberValue") then
                 local n = v.Name:lower()
                 if n:find("cooldown") or n:find("delay")
                 or n:find("wait") or n:find("rate") or n:find("swing") then
-                    if mode == "max" then
-                        v.Value = 0
-                    else
-                        v.Value = math.min(v.Value, 0.08)
-                    end
+                    v.Value = 0.01
                 end
             end
         end
 
-        -- 2) Tăng tốc animation swing
+        -- 1b) Ép cooldown dạng Attribute (nếu game dùng attribute)
+        for _, attr in ipairs(tool:GetAttributes()) do
+            local n = attr:lower()
+            if n:find("cooldown") or n:find("delay")
+            or n:find("rate") or n:find("swing") then
+                pcall(function() tool:SetAttribute(attr, 0.01) end)
+            end
+        end
+
+        -- 2) Tăng tốc animation (5x cho khớp 0.01)
         local char = player.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local animator = hum and hum:FindFirstChildOfClass("Animator")
-            if animator then
-                for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
-                    local an = tr.Animation and tr.Animation.Name:lower() or ""
-                    if an:find("swing") or an:find("pick")
-                    or an:find("hit") or an:find("mine") then
-                        tr:AdjustSpeed(mode == "max" and 6 or 2)
-                    end
-                end
-            end
-        end
-
-        -- 3) Spam RemoteEvent swing nếu có (bypass cooldown server-side nếu game cho phép)
-        if mode == "max" then
-            for _, v in ipairs(game:GetDescendants()) do
-                if v:IsA("RemoteEvent") then
-                    local n = v.Name:lower()
-                    if n:find("swing") or n:find("pick")
-                    or n:find("hit") or n:find("attack") then
-                        pcall(function() v:FireServer() end)
-                    end
+        local hum  = char and char:FindFirstChildOfClass("Humanoid")
+        local animator = hum and hum:FindFirstChildOfClass("Animator")
+        if animator then
+            for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
+                local an = tr.Animation and tr.Animation.Name:lower() or ""
+                if an:find("swing") or an:find("pick")
+                or an:find("hit") or an:find("mine") then
+                    tr:AdjustSpeed(5)
                 end
             end
         end
@@ -295,8 +278,7 @@ end
 -- ====================== NÚT CHỨC NĂNG ======================
 local fpsBtn,    fpsSt    = createBtn("🚀\nTăng FPS")
 local pingBtn,   pingSt   = createBtn("📡\nGiảm Ping")
-local x2Btn,     x2St     = createBtn("⛏️\nX2 Swing")
-local maxBtn,    maxSt    = createBtn("⚡\nSwing Max")
+local x2Btn,     x2St     = createBtn("⛏️\nX2 Swing\n(0.01)")
 local allOnBtn,  allOnSt  = createBtn("✅\nBật Tất Cả")
 local allOffBtn, allOffSt = createBtn("❌\nTắt Tất Cả")
 
@@ -312,44 +294,24 @@ end)
 
 x2Btn.MouseButton1Click:Connect(function()
     states.x2 = not states.x2
-    if states.x2 then
-        states.max = false
-        setState(maxBtn, maxSt, false)
-        applySwing("x2")
-    else
-        applySwing(nil)
-    end
+    applySwing(states.x2)
     setState(x2Btn, x2St, states.x2)
-end)
-
-maxBtn.MouseButton1Click:Connect(function()
-    states.max = not states.max
-    if states.max then
-        states.x2 = false
-        setState(x2Btn, x2St, false)
-        applySwing("max")
-    else
-        applySwing(nil)
-    end
-    setState(maxBtn, maxSt, states.max)
 end)
 
 allOnBtn.MouseButton1Click:Connect(function()
     setFPS(true);   setState(fpsBtn,  fpsSt,  true)
     setPing(true);  setState(pingBtn, pingSt, true)
-    states.x2  = false; states.max = true
-    setState(x2Btn,  x2St,  false)
-    setState(maxBtn, maxSt, true)
-    applySwing("max")
+    states.x2 = true
+    applySwing(true)
+    setState(x2Btn, x2St, true)
 end)
 
 allOffBtn.MouseButton1Click:Connect(function()
     setFPS(false);  setState(fpsBtn,  fpsSt,  false)
     setPing(false); setState(pingBtn, pingSt, false)
-    states.x2 = false; states.max = false
-    setState(x2Btn,  x2St,  false)
-    setState(maxBtn, maxSt, false)
-    applySwing(nil)
+    states.x2 = false
+    applySwing(false)
+    setState(x2Btn, x2St, false)
 end)
 
-print("[Boost Execute] ⚡ Loaded successfully for Break and Steal an Egg!")
+print("[Boost Execute v2] ⚡ Loaded! (No Swing Max | X2 = 0.01)")
