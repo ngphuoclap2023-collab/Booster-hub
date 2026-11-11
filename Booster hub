@@ -1,17 +1,19 @@
 --[[ 
-    BOOSTER HUB - TỐI ƯU HÓA HIỆU SUẤT
-    Đã Việt hóa và thêm các tính năng từ ảnh gửi
+    BOOSTER HUB - TỐI ƯU HÓA HIỆU SUẤT (FIX FULLSCREEN)
 ]]
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Xóa UI cũ
 if PlayerGui:FindFirstChild("BoosterHub") then
     PlayerGui.BoosterHub:Destroy()
+end
+if PlayerGui:FindFirstChild("BoosterBlackScreenGui") then
+    PlayerGui.BoosterBlackScreenGui:Destroy()
 end
 
 -- ================= BIẾN TRẠNG THÁI =================
@@ -21,7 +23,7 @@ local States = {
     BlackScreen = false,
     StartupBoost = false
 }
-local SavedVisuals = {} -- Lưu lại các hiệu ứng đã xóa để có thể khôi phục
+local SavedVisuals = {}
 
 -- ================= GIAO DIỆN CHÍNH =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -30,34 +32,36 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
--- Nút Toggle (Đã đẩy lên cao)
+-- Nút Toggle (Logo chữ B)
 local ToggleBtn = Instance.new("ImageButton")
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = ScreenGui
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 80) -- ĐÃ ĐẨY CAO LÊN (Y=80)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 80) 
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Draggable = true
-ToggleBtn.Image = "rbxassetid://134976504282359" -- Logo chữ B
+ToggleBtn.Image = "rbxassetid://134976504282359"
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 10)
 local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
 ToggleStroke.Color = Color3.fromRGB(0, 255, 255)
 ToggleStroke.Thickness = 2
 
--- Bảng Menu (Hình vuông bo góc)
+-- Bảng Menu (ĐÃ LÀM RỘNG RA)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 480, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -175)
+-- Đổi thành 95% chiều ngang màn hình, tự động căn giữa
+MainFrame.Size = UDim2.new(0.95, 0, 0, 400)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Visible = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-Instance.new("UIScale", MainFrame).Scale = 0.9
+-- Không dùng UIScale thu nhỏ nữa để nó to rõ ràng
 
 local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Color = Color3.fromRGB(0, 255, 255)
@@ -71,7 +75,7 @@ Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.Text = "🚀 BOOSTER - HIỆU SUẤT"
 Title.TextColor3 = Color3.fromRGB(0, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 15
+Title.TextSize = 16
 Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 12)
 
 local CloseBtn = Instance.new("TextButton")
@@ -84,7 +88,7 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
 
--- Vùng chứa tính năng (Scrolling)
+-- Vùng chứa tính năng
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Parent = MainFrame
 ScrollFrame.Size = UDim2.new(1, -20, 1, -90)
@@ -106,35 +110,35 @@ local function CreateToggle(parent, text, desc, order, callback)
 
     local title = Instance.new("TextLabel")
     title.Parent = frame
-    title.Size = UDim2.new(0.8, 0, 0, 25)
+    title.Size = UDim2.new(0.75, 0, 0, 25)
     title.Position = UDim2.new(0, 10, 0, 5)
     title.BackgroundTransparency = 1
     title.Text = text
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 12
+    title.TextSize = 13
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local descLabel = Instance.new("TextLabel")
     descLabel.Parent = frame
-    descLabel.Size = UDim2.new(0.8, 0, 0, 20)
+    descLabel.Size = UDim2.new(0.75, 0, 0, 20)
     descLabel.Position = UDim2.new(0, 10, 0, 28)
     descLabel.BackgroundTransparency = 1
     descLabel.Text = desc
     descLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
     descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 10
+    descLabel.TextSize = 11
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local btn = Instance.new("TextButton")
     btn.Parent = frame
-    btn.Size = UDim2.new(0, 50, 0, 25)
-    btn.Position = UDim2.new(1, -60, 0.5, -12.5)
+    btn.Size = UDim2.new(0, 60, 0, 28)
+    btn.Position = UDim2.new(1, -70, 0.5, -14)
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     btn.Text = "TẮT"
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
+    btn.TextSize = 12
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
     btn.MouseButton1Click:Connect(function()
@@ -163,7 +167,7 @@ local function CreateInput(parent, text, defaultVal, order, callback)
 
     local label = Instance.new("TextLabel")
     label.Parent = frame
-    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
@@ -190,7 +194,6 @@ end
 
 -- ================= KHU VỰC TÍNH NĂNG =================
 
--- 1. Khởi động nhanh
 CreateToggle(ScrollFrame, "Khởi Động Nhanh (Startup Boost)", "Giảm đồ họa tối đa ngay khi bật, xóa sương mù", 1, function(v)
     States.StartupBoost = v
     if v then
@@ -204,7 +207,6 @@ CreateToggle(ScrollFrame, "Khởi Động Nhanh (Startup Boost)", "Giảm đồ 
     end
 end)
 
--- 2. Ẩn giao diện túi đồ
 CreateToggle(ScrollFrame, "Ẩn Giao Diện Túi Đồ (No Backpack)", "Ẩn UI ba lô và các nút thừa của game", 2, function(v)
     States.NoBackpack = v
     local backpack = PlayerGui:FindFirstChild("Backpack")
@@ -213,11 +215,9 @@ CreateToggle(ScrollFrame, "Ẩn Giao Diện Túi Đồ (No Backpack)", "Ẩn UI 
     end
 end)
 
--- 3. Tăng cường FPS
 CreateToggle(ScrollFrame, "Tăng Cường FPS (Xóa Hiệu Ứng)", "Xóa hạt, đèn, pet người khác, hiệu ứng trứng", 3, function(v)
     States.FPSBoost = v
     if v then
-        -- Xóa các hiệu ứng hạt, khói, lửa
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("PointLight") or obj:IsA("SpotLight") then
                 if obj.Enabled then
@@ -226,48 +226,48 @@ CreateToggle(ScrollFrame, "Tăng Cường FPS (Xóa Hiệu Ứng)", "Xóa hạt,
                 end
             end
         end
-        -- Ẩn pet của người chơi khác
         for _, plr in pairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
                 for _, obj in pairs(plr.Character:GetDescendants()) do
                     if obj:IsA("Model") and (obj.Name:lower():find("pet") or obj.Name:lower():find("guard")) then
-                        obj.Parent = nil -- Xóa tạm thời
+                        obj.Parent = nil
                     end
                 end
             end
         end
     else
-        -- Khôi phục hiệu ứng
         for _, obj in pairs(SavedVisuals) do
             if obj and obj.Parent then obj.Enabled = true end
         end
         table.clear(SavedVisuals)
-        -- Lưu ý: Pet người khác đã xóa thì không khôi phục được bằng script này (cần chơi lại)
     end
 end)
 
--- 4. Màn hình đen (Chạy ngầm)
+-- 4. Màn hình đen (ĐÃ FIX TOÀN MÀN HÌNH)
 CreateToggle(ScrollFrame, "Màn Hình Đen (Chạy Ngầm/Treo Máy)", "Tắt kết xuất 3D, giữ script chạy ngầm", 4, function(v)
     States.BlackScreen = v
     if v then
-        local blackGui = Instance.new("Frame")
-        blackGui.Name = "BoosterBlackScreen"
-        blackGui.Size = UDim2.new(1, 0, 1, 0)
-        blackGui.BackgroundColor3 = Color3.new(0, 0, 0)
-        blackGui.BorderSizePixel = 0
-        blackGui.ZIndex = 99999
-        blackGui.Parent = ScreenGui
+        -- Tạo ScreenGui riêng biệt để phủ lên mọi thứ
+        local BlackGui = Instance.new("ScreenGui")
+        BlackGui.Name = "BoosterBlackScreenGui"
+        BlackGui.IgnoreGuiInset = true
+        BlackGui.DisplayOrder = 999999 -- Luôn nằm trên cùng
+        BlackGui.Parent = PlayerGui
+
+        local BlackFrame = Instance.new("Frame")
+        BlackFrame.Size = UDim2.new(1, 0, 1, 0) -- 100% màn hình
+        BlackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+        BlackFrame.BorderSizePixel = 0
+        BlackFrame.Parent = BlackGui
     else
-        local bg = ScreenGui:FindFirstChild("BoosterBlackScreen")
-        if bg then bg:Destroy() end
+        local BlackGui = PlayerGui:FindFirstChild("BoosterBlackScreenGui")
+        if BlackGui then BlackGui:Destroy() end
     end
 end)
 
--- 5. Giới hạn FPS
 CreateInput(ScrollFrame, "Giới Hạn FPS (FPS Limit):", 60, 5, function(val)
     local num = tonumber(val)
     if num and num > 0 then
-        -- Lệnh setfpscap chỉ hoạt động trên một số Executor (như Delta)
         pcall(function() setfpscap(num) end)
     end
 end)
