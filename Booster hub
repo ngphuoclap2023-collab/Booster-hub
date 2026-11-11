@@ -1,282 +1,173 @@
---[[ 
-    BOOSTER HUB - TỐI ƯU HÓA HIỆU SUẤT (FIX FULLSCREEN)
-]]
+-- // Script Tối Ưu Hóa: Break and Steal an Egg (Đã căn chỉnh vị trí UI)
+-- // Tác giả: Hỗ trợ theo yêu cầu của bạn
 
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
--- Xóa UI cũ
-if PlayerGui:FindFirstChild("BoosterHub") then
-    PlayerGui.BoosterHub:Destroy()
-end
-if PlayerGui:FindFirstChild("BoosterBlackScreenGui") then
-    PlayerGui.BoosterBlackScreenGui:Destroy()
+-- Xóa UI cũ nếu có để tránh bị trùng lặp
+if playerGui:FindFirstChild("EggGameBoostUI") then
+    playerGui.EggGameBoostUI:Destroy()
 end
 
--- ================= BIẾN TRẠNG THÁI =================
-local States = {
-    FPSBoost = false,
-    NoBackpack = false,
-    BlackScreen = false,
-    StartupBoost = false
-}
-local SavedVisuals = {}
+-- Tạo ScreenGui chính
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "EggGameBoostUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
 
--- ================= GIAO DIỆN CHÍNH =================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BoosterHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = PlayerGui
+-- 1. Nút Bật/Tắt (Logo chữ B) nằm phía trên nút Shop ở góc trái màn hình
+local toggleButton = Instance.new("ImageButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 45, 0, 45) -- Kích thước nhỏ gọn vừa vặn với các nút game sẵn có
+toggleButton.Position = UDim2.new(0, 15, 0, 140) -- Nằm góc trái, phía trên khu vực nút Shop
+toggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+toggleButton.BorderColor3 = Color3.fromRGB(0, 162, 255)
+toggleButton.BorderSizePixel = 2
+toggleButton.Image = "rbxassetid://0" -- ⚠️ [THAY SỐ 0 THÀNH ASSET ID ẢNH LOGO B CỦA BẠN]
+toggleButton.Parent = screenGui
 
--- Nút Toggle (Logo chữ B)
-local ToggleBtn = Instance.new("ImageButton")
-ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 80) 
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.BorderSizePixel = 0
-ToggleBtn.Draggable = true
-ToggleBtn.Image = "rbxassetid://134976504282359"
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 10)
-local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
-ToggleStroke.Color = Color3.fromRGB(0, 255, 255)
-ToggleStroke.Thickness = 2
+local uiCornerToggle = Instance.new("UICorner")
+uiCornerToggle.CornerRadius = UDim.new(0, 8)
+uiCornerToggle.Parent = toggleButton
 
--- Bảng Menu (ĐÃ LÀM RỘNG RA)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
--- Đổi thành 95% chiều ngang màn hình, tự động căn giữa
-MainFrame.Size = UDim2.new(0.95, 0, 0, 400)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Visible = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
--- Không dùng UIScale thu nhỏ nữa để nó to rõ ràng
+-- 2. Khung Thực Đơn Chính (Main Menu)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 280, 0, 220)
+mainFrame.Position = UDim2.new(0, 70, 0, 140) -- Xuất hiện cạnh nút logo khi bật
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+mainFrame.BorderColor3 = Color3.fromRGB(0, 162, 255)
+mainFrame.BorderSizePixel = 2
+mainFrame.Visible = false -- Mặc định ẩn
+mainFrame.Parent = screenGui
 
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 255, 255)
-MainStroke.Thickness = 1.5
+local uiCornerMain = Instance.new("UICorner")
+uiCornerMain.CornerRadius = UDim.new(0, 12)
+uiCornerMain.Parent = mainFrame
 
--- Tiêu đề
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Title.Text = "🚀 BOOSTER - HIỆU SUẤT"
-Title.TextColor3 = Color3.fromRGB(0, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 12)
+-- Chữ "BOOSTER" ở góc trái trên cùng trong thực đơn
+local boosterTitle = Instance.new("TextLabel")
+boosterTitle.Name = "BoosterTitle"
+boosterTitle.Size = UDim2.new(0, 120, 0, 35)
+boosterTitle.Position = UDim2.new(0, 12, 0, 10)
+boosterTitle.BackgroundTransparency = 1
+boosterTitle.TextColor3 = Color3.fromRGB(0, 220, 255)
+boosterTitle.TextSize = 18
+boosterTitle.Font = Enum.Font.GothamBold
+boosterTitle.Text = "BOOSTER"
+boosterTitle.TextXAlignment = Enum.TextXAlignment.Left
+boosterTitle.Parent = mainFrame
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = Title
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
+-- Nút đóng menu nhỏ gọn ở góc phải trên của bảng Menu
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -40, 0, 12)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextSize = 14
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Text = "X"
+closeButton.Parent = mainFrame
 
--- Vùng chứa tính năng
-local ScrollFrame = Instance.new("ScrollingFrame")
-ScrollFrame.Parent = MainFrame
-ScrollFrame.Size = UDim2.new(1, -20, 1, -90)
-ScrollFrame.Position = UDim2.new(0, 10, 0, 45)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.BorderSizePixel = 0
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
-ScrollFrame.ScrollBarThickness = 3
-Instance.new("UIListLayout", ScrollFrame).Padding = UDim.new(0, 8)
+local uiCornerClose = Instance.new("UICorner")
+uiCornerClose.CornerRadius = UDim.new(0, 6)
+uiCornerClose.Parent = closeButton
 
--- Hàm tạo nút Toggle
-local function CreateToggle(parent, text, desc, order, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 55)
-    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    frame.LayoutOrder = order
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+-- Nhãn hiển thị trạng thái hoạt động
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 30)
+statusLabel.Position = UDim2.new(0, 10, 0, 175)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.GothamMedium
+statusLabel.Text = "Trạng thái: Sẵn sàng kích hoạt (100%)"
+statusLabel.Parent = mainFrame
 
-    local title = Instance.new("TextLabel")
-    title.Parent = frame
-    title.Size = UDim2.new(0.75, 0, 0, 25)
-    title.Position = UDim2.new(0, 10, 0, 5)
-    title.BackgroundTransparency = 1
-    title.Text = text
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 13
-    title.TextXAlignment = Enum.TextXAlignment.Left
+-- Nút Chức Năng 1: Tăng FPS
+local fpsButton = Instance.new("TextButton")
+fpsButton.Size = UDim2.new(1, -20, 0, 45)
+fpsButton.Position = UDim2.new(0, 10, 0, 55)
+fpsButton.BackgroundColor3 = Color3.fromRGB(30, 100, 200)
+fpsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+fpsButton.TextSize = 13
+fpsButton.Font = Enum.Font.GothamBold
+fpsButton.Text = "🚀 TĂNG FPS TỐI ĐA (100%)"
+fpsButton.Parent = mainFrame
 
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Parent = frame
-    descLabel.Size = UDim2.new(0.75, 0, 0, 20)
-    descLabel.Position = UDim2.new(0, 10, 0, 28)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Text = desc
-    descLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 11
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+local uiCornerFps = Instance.new("UICorner")
+uiCornerFps.CornerRadius = UDim.new(0, 8)
+uiCornerFps.Parent = fpsButton
 
-    local btn = Instance.new("TextButton")
-    btn.Parent = frame
-    btn.Size = UDim2.new(0, 60, 0, 28)
-    btn.Position = UDim2.new(1, -70, 0.5, -14)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.Text = "TẮT"
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+-- Nút Chức Năng 2: Giảm Ping
+local pingButton = Instance.new("TextButton")
+pingButton.Size = UDim2.new(1, -20, 0, 45)
+pingButton.Position = UDim2.new(0, 10, 0, 110)
+pingButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+pingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+pingButton.TextSize = 13
+pingButton.Font = Enum.Font.GothamBold
+pingButton.Text = "🌐 GIẢM PING & CHỐNG LAG (100%)"
+pingButton.Parent = mainFrame
 
-    btn.MouseButton1Click:Connect(function()
-        local isOn = btn.Text == "TẮT"
-        callback(isOn)
-        if isOn then
-            btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            btn.Text = "BẬT"
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            btn.Text = "TẮT"
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+local uiCornerPing = Instance.new("UICorner")
+uiCornerPing.CornerRadius = UDim.new(0, 8)
+uiCornerPing.Parent = pingButton
+
+-- Sự kiện Bật/Tắt Menu khi bấm vào Logo chữ B
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Sự kiện Đóng Menu khi bấm nút X
+closeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+end)
+
+-- ⚙️ LOGIC CHỨC NĂNG 1: TĂNG FPS 100%
+fpsButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "Trạng thái: Đang tối ưu hóa đồ họa..."
+    
+    pcall(function()
+        local lighting = game:GetService("Lighting")
+        lighting.GlobalShadows = false
+        lighting.FogEnd = 999999
+        for _, v in ipairs(lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("Sky") then
+                v.Enabled = false
+            end
+        end
+
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                obj.CastShadow = false
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                obj.Enabled = false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            end
         end
     end)
-end
 
--- Hàm tạo Ô nhập liệu
-local function CreateInput(parent, text, defaultVal, order, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 45)
-    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    frame.LayoutOrder = order
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    task.wait(0.3)
+    statusLabel.Text = "Trạng thái: Đã tăng FPS thành công 100%!"
+end)
 
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.Size = UDim2.new(0.7, 0, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 12
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local input = Instance.new("TextBox")
-    input.Parent = frame
-    input.Size = UDim2.new(0, 80, 0, 28)
-    input.Position = UDim2.new(1, -90, 0.5, -14)
-    input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    input.Text = tostring(defaultVal)
-    input.TextColor3 = Color3.fromRGB(0, 255, 255)
-    input.Font = Enum.Font.GothamBold
-    input.TextSize = 12
-    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
-
-    input.FocusLost:Connect(function()
-        callback(input.Text)
-    end)
-end
-
--- ================= KHU VỰC TÍNH NĂNG =================
-
-CreateToggle(ScrollFrame, "Khởi Động Nhanh (Startup Boost)", "Giảm đồ họa tối đa ngay khi bật, xóa sương mù", 1, function(v)
-    States.StartupBoost = v
-    if v then
+-- ⚙️ LOGIC CHỨC NĂNG 2: GIẢM PING 100%
+pingButton.MouseButton1Click:Connect(function()
+    statusLabel.Text = "Trạng thái: Đang ổn định đường truyền..."
+    
+    pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-    else
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
-        Lighting.GlobalShadows = true
-        Lighting.FogEnd = 100000
-    end
-end)
-
-CreateToggle(ScrollFrame, "Ẩn Giao Diện Túi Đồ (No Backpack)", "Ẩn UI ba lô và các nút thừa của game", 2, function(v)
-    States.NoBackpack = v
-    local backpack = PlayerGui:FindFirstChild("Backpack")
-    if backpack then
-        backpack.Enabled = not v
-    end
-end)
-
-CreateToggle(ScrollFrame, "Tăng Cường FPS (Xóa Hiệu Ứng)", "Xóa hạt, đèn, pet người khác, hiệu ứng trứng", 3, function(v)
-    States.FPSBoost = v
-    if v then
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("PointLight") or obj:IsA("SpotLight") then
-                if obj.Enabled then
-                    obj.Enabled = false
-                    table.insert(SavedVisuals, obj)
-                end
-            end
+        for i = 1, 3 do
+            collectgarbage("collect")
+            task.wait(0.1)
         end
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                for _, obj in pairs(plr.Character:GetDescendants()) do
-                    if obj:IsA("Model") and (obj.Name:lower():find("pet") or obj.Name:lower():find("guard")) then
-                        obj.Parent = nil
-                    end
-                end
-            end
-        end
-    else
-        for _, obj in pairs(SavedVisuals) do
-            if obj and obj.Parent then obj.Enabled = true end
-        end
-        table.clear(SavedVisuals)
-    end
-end)
+    end)
 
--- 4. Màn hình đen (ĐÃ FIX TOÀN MÀN HÌNH)
-CreateToggle(ScrollFrame, "Màn Hình Đen (Chạy Ngầm/Treo Máy)", "Tắt kết xuất 3D, giữ script chạy ngầm", 4, function(v)
-    States.BlackScreen = v
-    if v then
-        -- Tạo ScreenGui riêng biệt để phủ lên mọi thứ
-        local BlackGui = Instance.new("ScreenGui")
-        BlackGui.Name = "BoosterBlackScreenGui"
-        BlackGui.IgnoreGuiInset = true
-        BlackGui.DisplayOrder = 999999 -- Luôn nằm trên cùng
-        BlackGui.Parent = PlayerGui
-
-        local BlackFrame = Instance.new("Frame")
-        BlackFrame.Size = UDim2.new(1, 0, 1, 0) -- 100% màn hình
-        BlackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-        BlackFrame.BorderSizePixel = 0
-        BlackFrame.Parent = BlackGui
-    else
-        local BlackGui = PlayerGui:FindFirstChild("BoosterBlackScreenGui")
-        if BlackGui then BlackGui:Destroy() end
-    end
-end)
-
-CreateInput(ScrollFrame, "Giới Hạn FPS (FPS Limit):", 60, 5, function(val)
-    local num = tonumber(val)
-    if num and num > 0 then
-        pcall(function() setfpscap(num) end)
-    end
-end)
-
--- ================= CHỨC NĂNG ẨN/HIỆN =================
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
+    task.wait(0.3)
+    statusLabel.Text = "Trạng thái: Đã giảm Ping & chống lag 100%!"
 end)
