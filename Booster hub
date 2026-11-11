@@ -1,5 +1,5 @@
 --[[ 
-    BOOST HUB - Break and Steal an Egg (Đã fix UI)
+    BOOST HUB - Break and Steal an Egg (FIXED UI)
     Tối ưu cho Delta Android
 ]]
 
@@ -16,14 +16,12 @@ if PlayerGui:FindFirstChild("BoostHub") then
     PlayerGui.BoostHub:Destroy()
 end
 
--- ================= CẤU HÌNH GIAO DIỆN =================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BoostHub"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
--- Nút ẩn/hiện
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = ScreenGui
@@ -38,11 +36,10 @@ ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Draggable = true
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 
--- Bảng Menu chính
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 480, 0, 280) -- Thu nhỏ chiều ngang lại
+MainFrame.Size = UDim2.new(0, 480, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -240, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
@@ -51,12 +48,10 @@ MainFrame.Draggable = true
 MainFrame.Visible = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- Tự động thu phóng UI cho vừa màn hình điện thoại
 local UIScale = Instance.new("UIScale")
 UIScale.Parent = MainFrame
-UIScale.Scale = 1
+UIScale.Scale = 0.9
 
--- Tiêu đề
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
@@ -77,7 +72,6 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
 
--- Khu vực chứa 2 cột (Xếp ngang)
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Parent = MainFrame
 ContentFrame.Size = UDim2.new(1, -20, 1, -80)
@@ -90,25 +84,20 @@ ContentLayout.FillDirection = Enum.FillDirection.Horizontal
 ContentLayout.Padding = UDim.new(0, 10)
 ContentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- Cột Trái
 local LeftCol = Instance.new("Frame")
 LeftCol.Parent = ContentFrame
 LeftCol.Size = UDim2.new(0.48, 0, 1, 0)
 LeftCol.BackgroundTransparency = 1
-local LeftLayout = Instance.new("UIListLayout", LeftCol)
-LeftLayout.Padding = UDim.new(0, 5)
+Instance.new("UIListLayout", LeftCol).Padding = UDim.new(0, 5)
 
--- Cột Phải
 local RightCol = Instance.new("Frame")
 RightCol.Parent = ContentFrame
 RightCol.Size = UDim2.new(0.48, 0, 1, 0)
 RightCol.BackgroundTransparency = 1
-local RightLayout = Instance.new("UIListLayout", RightCol)
-RightLayout.Padding = UDim.new(0, 5)
+Instance.new("UIListLayout", RightCol).Padding = UDim.new(0, 5)
 
--- Hàm tạo Toggle Button
 local featureStates = {}
-local function CreateToggle(parent, text)
+local function CreateToggle(parent, text, order)
     local btn = Instance.new("TextButton")
     btn.Parent = parent
     btn.Size = UDim2.new(1, 0, 0, 28)
@@ -117,6 +106,7 @@ local function CreateToggle(parent, text)
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Font = Enum.Font.GothamSemibold
     btn.TextSize = 11
+    btn.LayoutOrder = order
     btn.BorderSizePixel = 0
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     return btn
@@ -134,9 +124,9 @@ local function UpdateBtnState(btn, isOn, name)
     end
 end
 
--- ================= CHỨC NĂNG CỘT TRÁI =================
+-- CỘT TRÁI
 featureStates.FPS = false
-local BtnFPS = CreateToggle(LeftCol, "Tăng FPS / Giảm Ping")
+local BtnFPS = CreateToggle(LeftCol, "Tăng FPS / Giảm Ping", 1)
 BtnFPS.MouseButton1Click:Connect(function()
     featureStates.FPS = not featureStates.FPS
     UpdateBtnState(BtnFPS, featureStates.FPS, "Tăng FPS / Giảm Ping")
@@ -157,20 +147,19 @@ BtnFPS.MouseButton1Click:Connect(function()
 end)
 
 featureStates.Swing = false
-local BtnSwing = CreateToggle(LeftCol, "X2 Swing Pickaxe (Siêu Nhanh)")
+local BtnSwing = CreateToggle(LeftCol, "X2 Swing Pickaxe", 2)
 BtnSwing.MouseButton1Click:Connect(function()
     featureStates.Swing = not featureStates.Swing
-    UpdateBtnState(BtnSwing, featureStates.Swing, "X2 Swing Pickaxe (Siêu Nhanh)")
+    UpdateBtnState(BtnSwing, featureStates.Swing, "X2 Swing Pickaxe")
 end)
 
 featureStates.AutoDiamond = false
-local BtnDiamond = CreateToggle(LeftCol, "Auto Hút Kim Cương")
+local BtnDiamond = CreateToggle(LeftCol, "Auto Hút Kim Cương", 3)
 BtnDiamond.MouseButton1Click:Connect(function()
     featureStates.AutoDiamond = not featureStates.AutoDiamond
     UpdateBtnState(BtnDiamond, featureStates.AutoDiamond, "Auto Hút Kim Cương")
 end)
 
--- Ô nhập phạm vi
 local RangeFrame = Instance.new("Frame")
 RangeFrame.Parent = LeftCol
 RangeFrame.Size = UDim2.new(1, 0, 0, 28)
@@ -182,7 +171,7 @@ local RangeLabel = Instance.new("TextLabel")
 RangeLabel.Parent = RangeFrame
 RangeLabel.Size = UDim2.new(0.55, 0, 1, 0)
 RangeLabel.BackgroundTransparency = 1
-RangeLabel.Text = "Phạm vi (100-1000):"
+RangeLabel.Text = "Phạm vi:"
 RangeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 RangeLabel.Font = Enum.Font.Gotham
 RangeLabel.TextSize = 10
@@ -209,9 +198,9 @@ RangeInput.FocusLost:Connect(function()
     end
 end)
 
--- ================= CHỨC NĂNG CỘT PHẢI =================
+-- CỘT PHẢI
 featureStates.Fullbright = false
-local BtnFullbright = CreateToggle(RightCol, "Fullbright (Sáng)")
+local BtnFullbright = CreateToggle(RightCol, "Fullbright (Sáng)", 1)
 BtnFullbright.MouseButton1Click:Connect(function()
     featureStates.Fullbright = not featureStates.Fullbright
     UpdateBtnState(BtnFullbright, featureStates.Fullbright, "Fullbright (Sáng)")
@@ -227,21 +216,21 @@ BtnFullbright.MouseButton1Click:Connect(function()
 end)
 
 featureStates.NoClip = false
-local BtnNoClip = CreateToggle(RightCol, "No Clip (Xuyên Tường)")
+local BtnNoClip = CreateToggle(RightCol, "No Clip (Xuyên Tường)", 2)
 BtnNoClip.MouseButton1Click:Connect(function()
     featureStates.NoClip = not featureStates.NoClip
     UpdateBtnState(BtnNoClip, featureStates.NoClip, "No Clip (Xuyên Tường)")
 end)
 
 featureStates.InfJump = false
-local BtnInfJump = CreateToggle(RightCol, "Infinite Jump (Nhảy Vô Hạn)")
+local BtnInfJump = CreateToggle(RightCol, "Infinite Jump (Nhảy Vô Hạn)", 3)
 BtnInfJump.MouseButton1Click:Connect(function()
     featureStates.InfJump = not featureStates.InfJump
     UpdateBtnState(BtnInfJump, featureStates.InfJump, "Infinite Jump (Nhảy Vô Hạn)")
 end)
 
 featureStates.AntiAFK = false
-local BtnAntiAFK = CreateToggle(RightCol, "Anti AFK (Chống Kick)")
+local BtnAntiAFK = CreateToggle(RightCol, "Anti AFK (Chống Kick)", 4)
 BtnAntiAFK.MouseButton1Click:Connect(function()
     featureStates.AntiAFK = not featureStates.AntiAFK
     UpdateBtnState(BtnAntiAFK, featureStates.AntiAFK, "Anti AFK (Chống Kick)")
@@ -254,7 +243,6 @@ BtnAntiAFK.MouseButton1Click:Connect(function()
     end
 end)
 
--- ================= NÚT BẬT / TẮT TẤT CẢ =================
 local AllBtns = {BtnFPS, BtnSwing, BtnDiamond, BtnFullbright, BtnNoClip, BtnInfJump, BtnAntiAFK}
 
 local BottomFrame = Instance.new("Frame")
@@ -302,13 +290,11 @@ end)
 ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- ================= VÒNG LẶP LOGIC =================
 task.spawn(function()
     while task.wait() do
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
-            
             if featureStates.Swing then
                 local tool = char:FindFirstChildOfClass("Tool")
                 if tool and (tool.Name:lower():find("pick") or tool.Name:lower():find("pickaxe")) then
@@ -316,7 +302,6 @@ task.spawn(function()
                     task.wait(0.05)
                 end
             end
-            
             if featureStates.AutoDiamond then
                 local range = tonumber(RangeInput.Text) or 500
                 for _, v in pairs(Workspace:GetDescendants()) do
@@ -327,7 +312,6 @@ task.spawn(function()
                     end
                 end
             end
-            
             if featureStates.NoClip then
                 for _, v in pairs(char:GetDescendants()) do
                     if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
