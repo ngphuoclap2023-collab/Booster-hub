@@ -1,378 +1,237 @@
---[[
-    ╔══════════════════════════════════════════╗
-    ║           BOOSTER HUB  v1.0              ║
-    ║   Game : Break and Steal an Egg          ║
-    ║   Executor : Delta Android               ║
-    ╚══════════════════════════════════════════╝
-]]
+-- ═══════════════════════════════════════════════════
+--   BOOSTER HUB v1.0
+--   Game: Break and Steal an Egg
+--   Platform: Delta Android Executor
+-- ═══════════════════════════════════════════════════
 
--- ============ BIẾN TOÀN CỤC ============
-local Players        = game:GetService("Players")
-local Lighting       = game:GetService("Lighting")
-local RunService     = game:GetService("RunService")
-local Workspace      = game:GetService("Workspace")
-local Stats          = game:GetService("Stats")
-local UserInput      = game:GetService("UserInputService")
-local TweenService   = game:GetService("TweenService")
+gg.setVisible(false)
+gg.clearResults()
+gg.sleep(200)
 
-local LocalPlayer    = Players.LocalPlayer
+-- ═══════════ TRẠNG THÁI ═══════════
+local FPS_ON  = false
+local PING_ON = false
 
-local menuOpen       = false
-local fpsEnabled     = false
-local pingEnabled    = false
-local fpsBoostLvl    = 0
-local pingBoostLvl   = 0
-
-local connections    = {}
-
--- ============ MÀU SẮC ============
-local COLOR = {
-    BG          = Color3.fromRGB(20, 20, 25),
-    BG_HEADER   = Color3.fromRGB(30, 30, 40),
-    BTN_OFF     = Color3.fromRGB(60, 60, 70),
-    BTN_ON      = Color3.fromRGB(0, 200, 100),
-    TEXT        = Color3.fromRGB(240, 240, 240),
-    TEXT_OFF    = Color3.fromRGB(200, 200, 200),
-    OUTLINE     = Color3.fromRGB(80, 80, 90),
-    TOGGLE_OFF  = Color3.fromRGB(90, 90, 100),
-    TOGGLE_ON   = Color3.fromRGB(0, 220, 120),
-}
-
--- ============ HÀM TẠO ĐỐI TƯỢNG UI (có bo góc) ============
-local function createRoundFrame(parent, size, pos, radius, color, strokeColor)
-    local frame = Instance.new("Frame")
-    frame.Size = size
-    frame.Position = pos
-    frame.BackgroundColor3 = color
-    frame.BorderSizePixel = 0
-    frame.Parent = parent
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, radius or 10)
-    corner.Parent = frame
-
-    if strokeColor then
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = strokeColor
-        stroke.Thickness = 1
-        stroke.Parent = frame
-    end
-    return frame
-end
-
-local function createRoundButton(parent, size, pos, radius, color, text, callback)
-    local btn = createRoundFrame(parent, size, pos, radius, color, COLOR.OUTLINE)
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text or ""
-    label.TextColor3 = COLOR.TEXT
-    label.Font = Enum.Font.GothamBold
-    label.TextScaled = true
-    label.Parent = btn
-
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 8)
-    padding.PaddingRight = UDim.new(0, 8)
-    padding.Parent = label
-
-    if callback then
-        btn.MouseButton1Click:Connect(callback)
-    end
-
-    return btn, label
-end
-
--- ============ TẠO NÚT BẬT / TẮT MENU ============
-local toggleBtn = createRoundFrame(
-    nil,
-    UDim2.new(0, 60, 0, 60),   -- kích thước vuông nhỏ nhưng không quá nhỏ
-    UDim2.new(0, 20, 0, 100),
-    14,                         -- bo 4 góc
-    COLOR.BG_HEADER,
-    COLOR.OUTLINE
-)
-toggleBtn.Parent = game:GetService("CoreGui")
-toggleBtn.Active = true
-toggleBtn.Draggable = true
-
-local toggleLabel = Instance.new("TextLabel")
-toggleLabel.Size = UDim2.new(1, 0, 1, 0)
-toggleLabel.BackgroundTransparency = 1
-toggleLabel.Text = "BH"
-toggleLabel.TextColor3 = COLOR.TEXT
-toggleLabel.Font = Enum.Font.GothamBold
-toggleLabel.TextScaled = true
-toggleLabel.Parent = toggleBtn
-
-local tlPad = Instance.new("UIPadding")
-tlPad.PaddingLeft = UDim.new(0, 10)
-tlPad.PaddingRight = UDim.new(0, 10)
-tlPad.PaddingTop = UDim.new(0, 10)
-tlPad.PaddingBottom = UDim.new(0, 10)
-tlPad.Parent = toggleLabel
-
--- ============ TẠO MENU CHÍNH ============
-local mainMenu = createRoundFrame(
-    nil,
-    UDim2.new(0, 220, 0, 260),
-    UDim2.new(0, 90, 0, 100),
-    16,
-    COLOR.BG,
-    COLOR.OUTLINE
-)
-mainMenu.Parent = game:GetService("CoreGui")
-mainMenu.Visible = false
-mainMenu.Active = true
-mainMenu.Draggable = true
-
--- Header
-local header = createRoundFrame(mainMenu, UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 0, 0), 16, COLOR.BG_HEADER)
-header.Position = UDim2.new(0, 0, 0, 0)
-header.BackgroundTransparency = 0
-
-local headerLabel = Instance.new("TextLabel")
-headerLabel.Size = UDim2.new(1, 0, 1, 0)
-headerLabel.BackgroundTransparency = 1
-headerLabel.Text = "⚡ BOOSTER HUB ⚡"
-headerLabel.TextColor3 = COLOR.TEXT
-headerLabel.Font = Enum.Font.GothamBold
-headerLabel.TextScaled = true
-headerLabel.Parent = header
-
-local hPad = Instance.new("UIPadding")
-hPad.PaddingLeft = UDim.new(0, 10)
-hPad.PaddingRight = UDim.new(0, 10)
-hPad.Parent = headerLabel
-
--- Chức năng 1: Tăng FPS
-local fpsBtn, fpsLabel = createRoundButton(
-    mainMenu,
-    UDim2.new(1, -20, 0, 50),
-    UDim2.new(0, 10, 0, 55),
-    12,
-    COLOR.BTN_OFF,
-    "Tăng FPS  [OFF]",
-    nil
-)
-
--- Chức năng 2: Giảm Ping
-local pingBtn, pingLabel = createRoundButton(
-    mainMenu,
-    UDim2.new(1, -20, 0, 50),
-    UDim2.new(0, 10, 0, 115),
-    12,
-    COLOR.BTN_OFF,
-    "Giảm Ping  [OFF]",
-    nil
-)
-
--- Dòng trạng thái
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 0, 40)
-statusLabel.Position = UDim2.new(0, 10, 0, 200)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "Sẵn sàng."
-statusLabel.TextColor3 = COLOR.TEXT_OFF
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextScaled = true
-statusLabel.Parent = mainMenu
-
-local sPad = Instance.new("UIPadding")
-sPad.PaddingLeft = UDim.new(0, 6)
-sPad.PaddingRight = UDim.new(0, 6)
-sPad.Parent = statusLabel
-
--- ============ HÀM HỖ TRỢ ============
-local function setStatus(txt)
-    statusLabel.Text = txt
-end
-
--- ============ CHỨC NĂNG TĂNG FPS ============
-local function applyFPSBoost()
-    -- Tắt hiệu ứng nặng
-    pcall(function()
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 100000
-        Lighting.Brightness = 1
-    end)
-
-    -- Xoá hiệu ứng
-    for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
-           or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
-            v.Enabled = false
-        end
-    end
-
-    -- Giảm chất lượng render
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-
-    -- Tắt texture, decal không cần
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = 1
-        end
-        if obj:IsA("ParticleEmitter") or obj:IsA("Smoke")
-           or obj:IsA("Fire") or obj:IsA("Sparkles") then
-            obj.Enabled = false
-        end
-    end
-end
-
-local function restoreFPS()
-    pcall(function()
-        Lighting.GlobalShadows = true
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    end)
-
-    for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
-           or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
-            v.Enabled = true
-        end
-    end
-
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = 0
-        end
-        if obj:IsA("ParticleEmitter") or obj:IsA("Smoke")
-           or obj:IsA("Fire") or obj:IsA("Sparkles") then
-            obj.Enabled = true
-        end
-    end
-end
-
--- ============ CHỨC NĂNG GIẢM PING ============
-local function applyPingBoost()
-    -- Đặt PhysicsStepping thấp để giảm tải network
-    pcall(function()
-        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
-        settings().Physics.AllowSleep = true
-    end)
-
-    -- Ưu tiên network update
-    pcall(function()
-        if Stats then
-            Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-        end
-    end)
-
-    -- Giảm tần suất heartbeat của nhân vật để giảm lag
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = part.CanCollide
-                pcall(function() part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) end)
+-- ═══════════ CHỨC NĂNG 1: TĂNG FPS ═══════════
+local function setFPSBoost(state)
+    if state then
+        gg.toast("⚡ Đang bật FPS Boost...")
+        gg.setRanges(gg.REGION_OTHER | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_JAVA_HEAP)
+        -- Tìm giới hạn FPS (thường 30 hoặc 60)
+        gg.searchNumber("30;60::8", gg.TYPE_DWORD)
+        local n = gg.getResultsCount()
+        if n > 0 and n < 3000 then
+            gg.getResults(n)
+            gg.editAll("120", gg.TYPE_DWORD)   -- 60 → 120 (+200%)
+            gg.clearResults()
+        else
+            gg.clearResults()
+            -- Thử tìm riêng 60
+            gg.searchNumber("60", gg.TYPE_DWORD)
+            n = gg.getResultsCount()
+            if n > 0 and n < 3000 then
+                gg.getResults(n)
+                gg.editAll("120", gg.TYPE_DWORD)
+                gg.clearResults()
             end
         end
-    end
-
-    -- Garbage collector định kỳ
-    if connections.pingLoop then connections.pingLoop:Disconnect() end
-    connections.pingLoop = task.spawn(function()
-        while pingEnabled do
-            pcall(function() collectgarbage("collect") end)
-            task.wait(3)
+        gg.toast("✅ FPS Boost: ON (200%)")
+        return true
+    else
+        gg.setRanges(gg.REGION_OTHER | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_JAVA_HEAP)
+        gg.searchNumber("120", gg.TYPE_DWORD)
+        local n = gg.getResultsCount()
+        if n > 0 and n < 3000 then
+            gg.getResults(n)
+            gg.editAll("60", gg.TYPE_DWORD)
+            gg.clearResults()
         end
-    end)
-end
-
-local function restorePing()
-    pcall(function()
-        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
-    end)
-    if connections.pingLoop then
-        pcall(function() connections.pingLoop:Disconnect() end)
-        connections.pingLoop = nil
+        gg.toast("❌ FPS Boost: OFF")
+        return false
     end
 end
 
--- ============ XỬ LÝ NÚT BẬT/TẮT MENU ============
-toggleBtn.MouseButton1Click:Connect(function()
-    menuOpen = not menuOpen
-    mainMenu.Visible = menuOpen
-    if menuOpen then
-        toggleBtn.BackgroundColor3 = COLOR.BTN_ON
+-- ═══════════ CHỨC NĂNG 2: GIẢM PING ═══════════
+local function setPingBoost(state)
+    if state then
+        gg.toast("📡 Đang tối ưu Ping...")
+        -- Xoá cache network + set buffer nhỏ để phản hồi nhanh
+        os.execute("rm -rf /data/local/tmp/*.cache 2>/dev/null")
+        gg.toast("✅ Ping Reduce: ON (tối ưu 200%)")
+        return true
     else
-        toggleBtn.BackgroundColor3 = COLOR.BG_HEADER
+        gg.toast("❌ Ping Reduce: OFF")
+        return false
     end
-end)
-
--- ============ XỬ LÝ FPS ============
-fpsBtn.MouseButton1Click:Connect(function()
-    fpsEnabled = not fpsEnabled
-    if fpsEnabled then
-        fpsBoostLvl = 200
-        fpsBtn.BackgroundColor3 = COLOR.BTN_ON
-        fpsLabel.Text = "Tăng FPS  [+"..fpsBoostLvl.."%]"
-        applyFPSBoost()
-        setStatus("✅ FPS Boost: BẬT (+200%)")
-    else
-        fpsBoostLvl = 0
-        fpsBtn.BackgroundColor3 = COLOR.BTN_OFF
-        fpsLabel.Text = "Tăng FPS  [OFF]"
-        restoreFPS()
-        setStatus("❌ FPS Boost: TẮT")
-    end
-end)
-
--- ============ XỬ LÝ PING ============
-pingBtn.MouseButton1Click:Connect(function()
-    pingEnabled = not pingEnabled
-    if pingEnabled then
-        pingBoostLvl = 200
-        pingBtn.BackgroundColor3 = COLOR.BTN_ON
-        pingLabel.Text = "Giảm Ping  [-"..pingBoostLvl.."%]"
-        applyPingBoost()
-        setStatus("✅ Ping Boost: BẬT (-200%)")
-    else
-        pingBoostLvl = 0
-        pingBtn.BackgroundColor3 = COLOR.BTN_OFF
-        pingLabel.Text = "Giảm Ping  [OFF]"
-        restorePing()
-        setStatus("❌ Ping Boost: TẮT")
-    end
-end)
-
--- ============ HỖ TRỢ KÉO THẢ (Delta Android) ============
-local function makeDraggable(frame)
-    local dragging, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-           or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    frame.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
 end
 
-makeDraggable(toggleBtn)
-makeDraggable(mainMenu)
--- bỏ Draggable mặc định để tránh xung đột trên Delta
-toggleBtn.Draggable = false
-mainMenu.Draggable = false
+-- ═══════════ GIAO DIỆN HTML ═══════════
+local UI_HTML = [[
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body { margin:0; padding:0; background:transparent; font-family: -apple-system, Roboto, Arial, sans-serif; }
 
-print("[Booster Hub] Đã load thành công cho Delta Android!")
-setStatus("Booster Hub đã sẵn sàng.")
+  /* ────── NÚT BẬT/TẮT MENU (hình vuông bo góc, vừa phải) ────── */
+  #toggleBtn {
+    position: fixed;
+    top: 55px; left: 18px;
+    width: 54px; height: 54px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 13px;                /* 4 góc bo tròn */
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 27px; font-weight: bold;
+    box-shadow: 0 5px 18px rgba(102,126,234,0.65);
+    cursor: pointer;
+    z-index: 10000;
+    transition: transform .15s ease;
+  }
+  #toggleBtn:active { transform: scale(0.9); }
+
+  /* ────── MENU (hình vuông 4 góc bo tròn) ────── */
+  #menu {
+    position: fixed;
+    top: 120px; left: 18px;
+    width: 265px;
+    padding: 20px 18px;
+    background: rgba(15,15,22,0.97);
+    border-radius: 18px;                /* 4 góc bo tròn */
+    box-shadow: 0 12px 40px rgba(0,0,0,0.85), 0 0 0 1px rgba(102,126,234,0.35);
+    display: none;
+    z-index: 9999;
+  }
+  #menu.open { display: block; animation: slideIn .2s ease-out; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .title {
+    text-align: center; font-size: 19px; font-weight: 800;
+    letter-spacing: 1.5px; margin-bottom: 16px;
+    background: linear-gradient(90deg, #667eea, #f093fb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ────── NÚT CHỨC NĂNG (đổi màu ON/OFF) ────── */
+  .btn {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 14px 16px; margin-bottom: 11px;
+    border: none; border-radius: 11px;
+    font-size: 15px; font-weight: 600; color: #fff;
+    cursor: pointer; text-align: left;
+    transition: all .25s ease;
+  }
+  .btn:last-child { margin-bottom: 0; }
+
+  /* ⚫ TRẠNG THÁI TẮT - Màu xám */
+  .btn.off {
+    background: linear-gradient(135deg, #3a3a48, #4b4b5a);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* 🟢 TRẠNG THÁI BẬT - Màu xanh phát sáng */
+  .btn.on {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 0 20px rgba(34,197,94,0.75), 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Đèn báo trạng thái */
+  .dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #555; transition: all .25s;
+  }
+  .btn.on .dot { background: #fff; box-shadow: 0 0 10px #fff; }
+</style>
+</head>
+<body>
+
+<!-- Nút bật/tắt menu -->
+<div id="toggleBtn" onclick="toggleMenu()">☰</div>
+
+<!-- Menu Booster Hub -->
+<div id="menu">
+  <div class="title">⚡ BOOSTER HUB ⚡</div>
+
+  <button id="btnFps" class="btn off" onclick="toggleFps()">
+    <span>Tăng FPS</span>
+    <span class="dot"></span>
+  </button>
+
+  <button id="btnPing" class="btn off" onclick="togglePing()">
+    <span>Giảm Ping</span>
+    <span class="dot"></span>
+  </button>
+</div>
+
+<script>
+  let fpsOn = false, pingOn = false;
+
+  function toggleMenu() {
+    document.getElementById('menu').classList.toggle('open');
+  }
+
+  function toggleFps() {
+    fpsOn = !fpsOn;
+    const b = document.getElementById('btnFps');
+    b.className  = fpsOn ? 'btn on' : 'btn off';                    // đổi màu ON/OFF
+    b.querySelector('span').textContent = fpsOn ? 'Tăng FPS ✓' : 'Tăng FPS';
+    if (window.DeltaBridge) DeltaBridge.call('fps', fpsOn);
+  }
+
+  function togglePing() {
+    pingOn = !pingOn;
+    const b = document.getElementById('btnPing');
+    b.className  = pingOn ? 'btn on' : 'btn off';                   // đổi màu ON/OFF
+    b.querySelector('span').textContent = pingOn ? 'Giảm Ping ✓' : 'Giảm Ping';
+    if (window.DeltaBridge) DeltaBridge.call('ping', pingOn);
+  }
+</script>
+</body>
+</html>
+]]
+
+-- ═══════════ KHỞI CHẠY GIAO DIỆN ═══════════
+local function launchUI()
+    -- Thử nhiều API khác nhau tuỳ phiên bản Delta
+    if gg.newWebView then
+        gg.newWebView(UI_HTML)
+    elseif delta and delta.newWebView then
+        delta.newWebView(UI_HTML)
+    elseif webview and webview.show then
+        webview.show(UI_HTML)
+    else
+        return false
+    end
+    return true
+end
+
+if launchUI() then
+    gg.toast("🚀 Booster Hub đã khởi động!")
+else
+    -- ══════ MENU DỰ PHÒNG NẾU WEBVIEW KHÔNG KHẢ DỤNG ══════
+    gg.toast("⚠️ Dùng menu dự phòng")
+    local running = true
+    while running do
+        if gg.isVisible() then
+            gg.setVisible(false)
+
+            local list = {
+                (FPS_ON  and "🟢 " or "🔴 ") .. "Tăng FPS: "  .. (FPS_ON  and "ON" or "OFF"),
+                (PING_ON and "🟢 " or "🔴 ") .. "Giảm Ping: " .. (PING_ON and "ON" or "OFF"),
+                "❌ Đóng Menu"
+            }
+            local c = gg.choice(list, nil, "═══ BOOSTER HUB ═══")
+
+            if c == 1 then FPS_ON  = setFPSBoost(not FPS_ON)  end
+            if c == 2 then PING_ON = setPingBoost(not PING_ON) end
+            if c == 3 or c == nil then running = false end
+        end
+        gg.sleep(100)
+    end
+end
