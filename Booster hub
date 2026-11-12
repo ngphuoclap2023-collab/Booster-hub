@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════
---   BOOSTER HUB v1.0
+--   BOOSTER HUB v1.1 (FIXED)
 --   Game: Break and Steal an Egg
 --   Platform: Delta Android Executor
 -- ═══════════════════════════════════════════════════
@@ -12,41 +12,69 @@ gg.sleep(200)
 local FPS_ON  = false
 local PING_ON = false
 
+-- Lưu giá trị GỐC để restore CHÍNH XÁC (fix Lỗi 2)
+local fpsSaved = {}
+
 -- ═══════════ CHỨC NĂNG 1: TĂNG FPS ═══════════
 local function setFPSBoost(state)
     if state then
-        gg.toast("⚡ Đang bật FPS Boost...")
+        if #fpsSaved > 0 then
+            gg.toast("ℹ️ FPS Boost đã bật rồi")
+            return true
+        end
+
+        gg.toast("⚡ Đang tìm FPS cap...")
+        fpsSaved = {}
         gg.setRanges(gg.REGION_OTHER | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_JAVA_HEAP)
-        -- Tìm giới hạn FPS (thường 30 hoặc 60)
-        gg.searchNumber("30;60::8", gg.TYPE_DWORD)
-        local n = gg.getResultsCount()
-        if n > 0 and n < 3000 then
-            gg.getResults(n)
-            gg.editAll("120", gg.TYPE_DWORD)   -- 60 → 120 (+200%)
+
+        -- ── Ưu tiên FLOAT (Unity engine) ──
+        for _, cap in ipairs({"30.0", "60.0"}) do
+            gg.searchNumber(cap, gg.TYPE_FLOAT)
+            local n = gg.getResultsCount()
+            if n > 0 and n <= 300 then
+                local res   = gg.getResults(n)
+                local edits = {}
+                for _, r in ipairs(res) do
+                    table.insert(fpsSaved, {address = r.address, value = r.value, flags = r.flags})
+                    table.insert(edits,   {address = r.address, value = 120.0,  flags = r.flags})
+                end
+                gg.setValues(edits)
+            end
             gg.clearResults()
-        else
-            gg.clearResults()
-            -- Thử tìm riêng 60
-            gg.searchNumber("60", gg.TYPE_DWORD)
-            n = gg.getResultsCount()
-            if n > 0 and n < 3000 then
-                gg.getResults(n)
-                gg.editAll("120", gg.TYPE_DWORD)
+        end
+
+        -- ── Fallback DWORD ──
+        if #fpsSaved == 0 then
+            for _, cap in ipairs({"30", "60"}) do
+                gg.searchNumber(cap, gg.TYPE_DWORD)
+                local n = gg.getResultsCount()
+                if n > 0 and n <= 300 then
+                    local res   = gg.getResults(n)
+                    local edits = {}
+                    for _, r in ipairs(res) do
+                        table.insert(fpsSaved, {address = r.address, value = r.value, flags = r.flags})
+                        table.insert(edits,   {address = r.address, value = 120,    flags = r.flags})
+                    end
+                    gg.setValues(edits)
+                end
                 gg.clearResults()
             end
         end
-        gg.toast("✅ FPS Boost: ON (200%)")
-        return true
-    else
-        gg.setRanges(gg.REGION_OTHER | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_JAVA_HEAP)
-        gg.searchNumber("120", gg.TYPE_DWORD)
-        local n = gg.getResultsCount()
-        if n > 0 and n < 3000 then
-            gg.getResults(n)
-            gg.editAll("60", gg.TYPE_DWORD)
-            gg.clearResults()
+
+        if #fpsSaved > 0 then
+            gg.toast("✅ FPS Boost ON (" .. #fpsSaved .. " giá trị)")
+            return true
+        else
+            gg.toast("⚠️ Không tìm thấy FPS cap — game có thể dùng cơ chế khác")
+            return false
         end
-        gg.toast("❌ FPS Boost: OFF")
+    else
+        -- Restore ĐÚNG các địa chỉ đã lưu (fix Lỗi 2)
+        if #fpsSaved > 0 then
+            gg.setValues(fpsSaved)
+            fpsSaved = {}
+        end
+        gg.toast("❌ FPS Boost OFF")
         return false
     end
 end
@@ -54,184 +82,43 @@ end
 -- ═══════════ CHỨC NĂNG 2: GIẢM PING ═══════════
 local function setPingBoost(state)
     if state then
-        gg.toast("📡 Đang tối ưu Ping...")
-        -- Xoá cache network + set buffer nhỏ để phản hồi nhanh
-        os.execute("rm -rf /data/local/tmp/*.cache 2>/dev/null")
-        gg.toast("✅ Ping Reduce: ON (tối ưu 200%)")
+        gg.toast("📡 Đang tối ưu Ping (client-side)...")
+        pcall(function()
+            os.execute("sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null")
+        end)
+        gg.toast("✅ Ping Boost ON (hiệu quả hạn chế)")
         return true
     else
-        gg.toast("❌ Ping Reduce: OFF")
+        gg.toast("❌ Ping Boost OFF")
         return false
     end
 end
 
--- ═══════════ GIAO DIỆN HTML ═══════════
-local UI_HTML = [[
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-  body { margin:0; padding:0; background:transparent; font-family: -apple-system, Roboto, Arial, sans-serif; }
+-- ═══════════ MENU LOOP (chạy được 100% trên Delta) ═══════════
+gg.toast("🚀 Booster Hub đã khởi động!")
+gg.setVisible(false)
 
-  /* ────── NÚT BẬT/TẮT MENU (hình vuông bo góc, vừa phải) ────── */
-  #toggleBtn {
-    position: fixed;
-    top: 55px; left: 18px;
-    width: 54px; height: 54px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 13px;                /* 4 góc bo tròn */
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 27px; font-weight: bold;
-    box-shadow: 0 5px 18px rgba(102,126,234,0.65);
-    cursor: pointer;
-    z-index: 10000;
-    transition: transform .15s ease;
-  }
-  #toggleBtn:active { transform: scale(0.9); }
+local running = true
+while running do
+    if gg.isVisible() then
+        gg.setVisible(false)
 
-  /* ────── MENU (hình vuông 4 góc bo tròn) ────── */
-  #menu {
-    position: fixed;
-    top: 120px; left: 18px;
-    width: 265px;
-    padding: 20px 18px;
-    background: rgba(15,15,22,0.97);
-    border-radius: 18px;                /* 4 góc bo tròn */
-    box-shadow: 0 12px 40px rgba(0,0,0,0.85), 0 0 0 1px rgba(102,126,234,0.35);
-    display: none;
-    z-index: 9999;
-  }
-  #menu.open { display: block; animation: slideIn .2s ease-out; }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+        local list = {
+            "⚡ Tăng FPS        " .. (FPS_ON  and "🟢 ON" or "🔴 OFF"),
+            "📡 Giảm Ping      " .. (PING_ON and "🟢 ON" or "🔴 OFF"),
+            "───────── Đóng ─────────"
+        }
+        local c = gg.choice(list, nil, "═══ ⚡ BOOSTER HUB ⚡ ═══")
 
-  .title {
-    text-align: center; font-size: 19px; font-weight: 800;
-    letter-spacing: 1.5px; margin-bottom: 16px;
-    background: linear-gradient(90deg, #667eea, #f093fb);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* ────── NÚT CHỨC NĂNG (đổi màu ON/OFF) ────── */
-  .btn {
-    display: flex; align-items: center; justify-content: space-between;
-    width: 100%; padding: 14px 16px; margin-bottom: 11px;
-    border: none; border-radius: 11px;
-    font-size: 15px; font-weight: 600; color: #fff;
-    cursor: pointer; text-align: left;
-    transition: all .25s ease;
-  }
-  .btn:last-child { margin-bottom: 0; }
-
-  /* ⚫ TRẠNG THÁI TẮT - Màu xám */
-  .btn.off {
-    background: linear-gradient(135deg, #3a3a48, #4b4b5a);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  }
-
-  /* 🟢 TRẠNG THÁI BẬT - Màu xanh phát sáng */
-  .btn.on {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    box-shadow: 0 0 20px rgba(34,197,94,0.75), 0 2px 8px rgba(0,0,0,0.3);
-  }
-
-  /* Đèn báo trạng thái */
-  .dot {
-    width: 12px; height: 12px; border-radius: 50%;
-    background: #555; transition: all .25s;
-  }
-  .btn.on .dot { background: #fff; box-shadow: 0 0 10px #fff; }
-</style>
-</head>
-<body>
-
-<!-- Nút bật/tắt menu -->
-<div id="toggleBtn" onclick="toggleMenu()">☰</div>
-
-<!-- Menu Booster Hub -->
-<div id="menu">
-  <div class="title">⚡ BOOSTER HUB ⚡</div>
-
-  <button id="btnFps" class="btn off" onclick="toggleFps()">
-    <span>Tăng FPS</span>
-    <span class="dot"></span>
-  </button>
-
-  <button id="btnPing" class="btn off" onclick="togglePing()">
-    <span>Giảm Ping</span>
-    <span class="dot"></span>
-  </button>
-</div>
-
-<script>
-  let fpsOn = false, pingOn = false;
-
-  function toggleMenu() {
-    document.getElementById('menu').classList.toggle('open');
-  }
-
-  function toggleFps() {
-    fpsOn = !fpsOn;
-    const b = document.getElementById('btnFps');
-    b.className  = fpsOn ? 'btn on' : 'btn off';                    // đổi màu ON/OFF
-    b.querySelector('span').textContent = fpsOn ? 'Tăng FPS ✓' : 'Tăng FPS';
-    if (window.DeltaBridge) DeltaBridge.call('fps', fpsOn);
-  }
-
-  function togglePing() {
-    pingOn = !pingOn;
-    const b = document.getElementById('btnPing');
-    b.className  = pingOn ? 'btn on' : 'btn off';                   // đổi màu ON/OFF
-    b.querySelector('span').textContent = pingOn ? 'Giảm Ping ✓' : 'Giảm Ping';
-    if (window.DeltaBridge) DeltaBridge.call('ping', pingOn);
-  }
-</script>
-</body>
-</html>
-]]
-
--- ═══════════ KHỞI CHẠY GIAO DIỆN ═══════════
-local function launchUI()
-    -- Thử nhiều API khác nhau tuỳ phiên bản Delta
-    if gg.newWebView then
-        gg.newWebView(UI_HTML)
-    elseif delta and delta.newWebView then
-        delta.newWebView(UI_HTML)
-    elseif webview and webview.show then
-        webview.show(UI_HTML)
-    else
-        return false
-    end
-    return true
-end
-
-if launchUI() then
-    gg.toast("🚀 Booster Hub đã khởi động!")
-else
-    -- ══════ MENU DỰ PHÒNG NẾU WEBVIEW KHÔNG KHẢ DỤNG ══════
-    gg.toast("⚠️ Dùng menu dự phòng")
-    local running = true
-    while running do
-        if gg.isVisible() then
-            gg.setVisible(false)
-
-            local list = {
-                (FPS_ON  and "🟢 " or "🔴 ") .. "Tăng FPS: "  .. (FPS_ON  and "ON" or "OFF"),
-                (PING_ON and "🟢 " or "🔴 ") .. "Giảm Ping: " .. (PING_ON and "ON" or "OFF"),
-                "❌ Đóng Menu"
-            }
-            local c = gg.choice(list, nil, "═══ BOOSTER HUB ═══")
-
-            if c == 1 then FPS_ON  = setFPSBoost(not FPS_ON)  end
-            if c == 2 then PING_ON = setPingBoost(not PING_ON) end
-            if c == 3 or c == nil then running = false end
+        if c == 1 then
+            FPS_ON = setFPSBoost(not FPS_ON)
+        elseif c == 2 then
+            PING_ON = setPingBoost(not PING_ON)
+        elseif c == 3 or c == nil then
+            running = false
         end
-        gg.sleep(100)
     end
+    gg.sleep(100)
 end
+
+gg.toast("👋 Booster Hub đã đóng")
