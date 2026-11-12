@@ -1,393 +1,378 @@
 --[[
-    ⚡ BOOST EXECUTE MENU v3 ⚡
-    Game: Break and Steal an Egg
-    Executor: Delta Android
-    Upgrade: FPS++ & PING++ (hiệu quả >100%)
-    X2 Swing = 0.02
+    ╔══════════════════════════════════════════╗
+    ║           BOOSTER HUB  v1.0              ║
+    ║   Game : Break and Steal an Egg          ║
+    ║   Executor : Delta Android               ║
+    ╚══════════════════════════════════════════╝
 ]]
 
-local Players       = game:GetService("Players")
-local UIS           = game:GetService("UserInputService")
-local RunService    = game:GetService("RunService")
-local Lighting      = game:GetService("Lighting")
-local TweenService  = game:GetService("TweenService")
+-- ============ BIẾN TOÀN CỤC ============
+local Players        = game:GetService("Players")
+local Lighting       = game:GetService("Lighting")
+local RunService     = game:GetService("RunService")
+local Workspace      = game:GetService("Workspace")
+local Stats          = game:GetService("Stats")
+local UserInput      = game:GetService("UserInputService")
+local TweenService   = game:GetService("TweenService")
 
-local player    = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local LocalPlayer    = Players.LocalPlayer
 
-if playerGui:FindFirstChild("BoostExecuteMenu") then
-    playerGui.BoostExecuteMenu:Destroy()
-end
+local menuOpen       = false
+local fpsEnabled     = false
+local pingEnabled    = false
+local fpsBoostLvl    = 0
+local pingBoostLvl   = 0
 
--- ====================== UI CHÍNH ======================
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BoostExecuteMenu"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.Parent = playerGui
+local connections    = {}
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 55, 0, 55)
-toggleBtn.Position = UDim2.new(0, 20, 0, 200)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-toggleBtn.Text = "⚡"
-toggleBtn.TextColor3 = Color3.fromRGB(80, 200, 255)
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 30
-toggleBtn.AutoButtonColor = false
-toggleBtn.Parent = screenGui
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 14)
-local tStroke = Instance.new("UIStroke", toggleBtn)
-tStroke.Color = Color3.fromRGB(80, 200, 255)
-tStroke.Thickness = 2
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 400, 0, 130)
-mainFrame.Position = UDim2.new(0.5, -200, 0, 30)
-mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.Visible = false
-mainFrame.Parent = screenGui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
-local mStroke = Instance.new("UIStroke", mainFrame)
-mStroke.Color = Color3.fromRGB(80, 200, 255)
-mStroke.Thickness = 2
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 28)
-title.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-title.BorderSizePixel = 0
-title.Text = "⚡  BOOST EXECUTE v3  ⚡"
-title.TextColor3 = Color3.fromRGB(80, 200, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 15
-title.Parent = mainFrame
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
-
-local container = Instance.new("Frame")
-container.Size = UDim2.new(1, -10, 1, -36)
-container.Position = UDim2.new(0, 5, 0, 33)
-container.BackgroundTransparency = 1
-container.Parent = mainFrame
-
-local list = Instance.new("UIListLayout", container)
-list.FillDirection = Enum.FillDirection.Horizontal
-list.Padding = UDim.new(0, 5)
-list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-list.VerticalAlignment = Enum.VerticalAlignment.Center
-
--- ====================== TOGGLE + DRAG ======================
-toggleBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
-end)
-
-local dragging, dragStart, startPos
-toggleBtn.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1
-    or i.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = i.Position; startPos = toggleBtn.Position
-    end
-end)
-UIS.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
-    or i.UserInputType == Enum.UserInputType.Touch) then
-        local d = i.Position - dragStart
-        toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
-                                       startPos.Y.Scale, startPos.Y.Offset + d.Y)
-    end
-end)
-UIS.InputEnded:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1
-    or i.UserInputType == Enum.UserInputType.Touch then dragging = false end
-end)
-
--- ====================== TẠO NÚT ======================
-local ON_COLOR  = Color3.fromRGB(0, 190, 110)
-local OFF_COLOR = Color3.fromRGB(35, 35, 50)
-local ON_TEXT   = Color3.fromRGB(255, 255, 255)
-local OFF_TEXT  = Color3.fromRGB(200, 200, 210)
-
-local function createBtn(text)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0, 72, 0, 78)
-    b.BackgroundColor3 = OFF_COLOR
-    b.TextColor3 = OFF_TEXT
-    b.Text = text
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 11
-    b.TextWrapped = true
-    b.AutoButtonColor = false
-    b.Parent = container
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
-    local s = Instance.new("UIStroke", b)
-    s.Color = Color3.fromRGB(70, 70, 90)
-    s.Thickness = 1.5
-    return b, s
-end
-
-local function setState(btn, stroke, on)
-    TweenService:Create(btn, TweenInfo.new(0.18), {
-        BackgroundColor3 = on and ON_COLOR or OFF_COLOR,
-        TextColor3       = on and ON_TEXT  or OFF_TEXT
-    }):Play()
-    TweenService:Create(stroke, TweenInfo.new(0.18), {
-        Color = on and Color3.fromRGB(0, 255, 160) or Color3.fromRGB(70, 70, 90)
-    }):Play()
-end
-
-local states = { fps = false, ping = false, x2 = false }
-
--- ====================== 🚀 TĂNG FPS NÂNG CAO ======================
-local savedLighting = {
-    shadows    = Lighting.GlobalShadows,
-    fogEnd     = Lighting.FogEnd,
-    brightness = Lighting.Brightness,
-    shadowSoft = Lighting.ShadowSoftness,
+-- ============ MÀU SẮC ============
+local COLOR = {
+    BG          = Color3.fromRGB(20, 20, 25),
+    BG_HEADER   = Color3.fromRGB(30, 30, 40),
+    BTN_OFF     = Color3.fromRGB(60, 60, 70),
+    BTN_ON      = Color3.fromRGB(0, 200, 100),
+    TEXT        = Color3.fromRGB(240, 240, 240),
+    TEXT_OFF    = Color3.fromRGB(200, 200, 200),
+    OUTLINE     = Color3.fromRGB(80, 80, 90),
+    TOGGLE_OFF  = Color3.fromRGB(90, 90, 100),
+    TOGGLE_ON   = Color3.fromRGB(0, 220, 120),
 }
 
-local fpsCleanupConn
+-- ============ HÀM TẠO ĐỐI TƯỢNG UI (có bo góc) ============
+local function createRoundFrame(parent, size, pos, radius, color, strokeColor)
+    local frame = Instance.new("Frame")
+    frame.Size = size
+    frame.Position = pos
+    frame.BackgroundColor3 = color
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
 
-local function deepFPS()
-    -- 1) Graphics & Render
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 10)
+    corner.Parent = frame
+
+    if strokeColor then
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = strokeColor
+        stroke.Thickness = 1
+        stroke.Parent = frame
+    end
+    return frame
+end
+
+local function createRoundButton(parent, size, pos, radius, color, text, callback)
+    local btn = createRoundFrame(parent, size, pos, radius, color, COLOR.OUTLINE)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text or ""
+    label.TextColor3 = COLOR.TEXT
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+    label.Parent = btn
+
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = label
+
+    if callback then
+        btn.MouseButton1Click:Connect(callback)
+    end
+
+    return btn, label
+end
+
+-- ============ TẠO NÚT BẬT / TẮT MENU ============
+local toggleBtn = createRoundFrame(
+    nil,
+    UDim2.new(0, 60, 0, 60),   -- kích thước vuông nhỏ nhưng không quá nhỏ
+    UDim2.new(0, 20, 0, 100),
+    14,                         -- bo 4 góc
+    COLOR.BG_HEADER,
+    COLOR.OUTLINE
+)
+toggleBtn.Parent = game:GetService("CoreGui")
+toggleBtn.Active = true
+toggleBtn.Draggable = true
+
+local toggleLabel = Instance.new("TextLabel")
+toggleLabel.Size = UDim2.new(1, 0, 1, 0)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.Text = "BH"
+toggleLabel.TextColor3 = COLOR.TEXT
+toggleLabel.Font = Enum.Font.GothamBold
+toggleLabel.TextScaled = true
+toggleLabel.Parent = toggleBtn
+
+local tlPad = Instance.new("UIPadding")
+tlPad.PaddingLeft = UDim.new(0, 10)
+tlPad.PaddingRight = UDim.new(0, 10)
+tlPad.PaddingTop = UDim.new(0, 10)
+tlPad.PaddingBottom = UDim.new(0, 10)
+tlPad.Parent = toggleLabel
+
+-- ============ TẠO MENU CHÍNH ============
+local mainMenu = createRoundFrame(
+    nil,
+    UDim2.new(0, 220, 0, 260),
+    UDim2.new(0, 90, 0, 100),
+    16,
+    COLOR.BG,
+    COLOR.OUTLINE
+)
+mainMenu.Parent = game:GetService("CoreGui")
+mainMenu.Visible = false
+mainMenu.Active = true
+mainMenu.Draggable = true
+
+-- Header
+local header = createRoundFrame(mainMenu, UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 0, 0), 16, COLOR.BG_HEADER)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundTransparency = 0
+
+local headerLabel = Instance.new("TextLabel")
+headerLabel.Size = UDim2.new(1, 0, 1, 0)
+headerLabel.BackgroundTransparency = 1
+headerLabel.Text = "⚡ BOOSTER HUB ⚡"
+headerLabel.TextColor3 = COLOR.TEXT
+headerLabel.Font = Enum.Font.GothamBold
+headerLabel.TextScaled = true
+headerLabel.Parent = header
+
+local hPad = Instance.new("UIPadding")
+hPad.PaddingLeft = UDim.new(0, 10)
+hPad.PaddingRight = UDim.new(0, 10)
+hPad.Parent = headerLabel
+
+-- Chức năng 1: Tăng FPS
+local fpsBtn, fpsLabel = createRoundButton(
+    mainMenu,
+    UDim2.new(1, -20, 0, 50),
+    UDim2.new(0, 10, 0, 55),
+    12,
+    COLOR.BTN_OFF,
+    "Tăng FPS  [OFF]",
+    nil
+)
+
+-- Chức năng 2: Giảm Ping
+local pingBtn, pingLabel = createRoundButton(
+    mainMenu,
+    UDim2.new(1, -20, 0, 50),
+    UDim2.new(0, 10, 0, 115),
+    12,
+    COLOR.BTN_OFF,
+    "Giảm Ping  [OFF]",
+    nil
+)
+
+-- Dòng trạng thái
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 40)
+statusLabel.Position = UDim2.new(0, 10, 0, 200)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Sẵn sàng."
+statusLabel.TextColor3 = COLOR.TEXT_OFF
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextScaled = true
+statusLabel.Parent = mainMenu
+
+local sPad = Instance.new("UIPadding")
+sPad.PaddingLeft = UDim.new(0, 6)
+sPad.PaddingRight = UDim.new(0, 6)
+sPad.Parent = statusLabel
+
+-- ============ HÀM HỖ TRỢ ============
+local function setStatus(txt)
+    statusLabel.Text = txt
+end
+
+-- ============ CHỨC NĂNG TĂNG FPS ============
+local function applyFPSBoost()
+    -- Tắt hiệu ứng nặng
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 100000
+        Lighting.Brightness = 1
+    end)
+
+    -- Xoá hiệu ứng
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
+           or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
+            v.Enabled = false
+        end
+    end
+
+    -- Giảm chất lượng render
     pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-    end)
-    pcall(function()
-        game:GetService("UserGameSettings").SavedQualityLevel =
-            Enum.SavedQualitySetting.QualityLevel1
     end)
 
-    -- 2) Lighting
-    Lighting.GlobalShadows    = false
-    Lighting.FogEnd           = 1e5
-    Lighting.Brightness       = 2
-    Lighting.EnvironmentDiffuseScale  = 0
-    Lighting.EnvironmentSpecularScale = 0
-    pcall(function() Lighting.ShadowSoftness = 0 end)
-    -- Xóa hiệu ứng post-processing
-    for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("BlurEffect") or v:IsA("BloomEffect")
-        or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect")
-        or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") then
-            v.Enabled = false
+    -- Tắt texture, decal không cần
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = 1
+        end
+        if obj:IsA("ParticleEmitter") or obj:IsA("Smoke")
+           or obj:IsA("Fire") or obj:IsA("Sparkles") then
+            obj.Enabled = false
         end
     end
-
-    -- 3) Quét toàn workspace 1 lần
-    for _, v in ipairs(workspace:GetDescendants()) do
-        -- Tắt particle nặng
-        if v:IsA("ParticleEmitter") or v:IsA("Smoke")
-        or v:IsA("Fire") or v:IsA("Sparkles") then
-            v.Enabled = false
-        -- Đổi Neon -> SmoothPlastic
-        elseif v:IsA("BasePart") then
-            if v.Material == Enum.Material.Neon then
-                v.Material = Enum.Material.SmoothPlastic
-            end
-            -- Tắt texture/decal
-            if v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            end
-        -- Tắt Terrain detail
-        elseif v:IsA("Terrain") then
-            pcall(function()
-                v.WaterWaveSize   = 0
-                v.WaterWaveSpeed  = 0
-                v.WaterReflectance = 0
-                v.WaterTransparency = 1
-                v.Decoration = false
-            end)
-        end
-    end
-
-    -- 4) Auto-cleanup: effect mới spawn sau khi bật FPS
-    if fpsCleanupConn then fpsCleanupConn:Disconnect() end
-    fpsCleanupConn = workspace.DescendantAdded:Connect(function(v)
-        if not states.fps then return end
-        if v:IsA("ParticleEmitter") or v:IsA("Smoke")
-        or v:IsA("Fire") or v:IsA("Sparkles") then
-            v.Enabled = false
-        elseif v:IsA("BasePart") and v.Material == Enum.Material.Neon then
-            v.Material = Enum.Material.SmoothPlastic
-        end
-    end)
 end
 
 local function restoreFPS()
-    if fpsCleanupConn then fpsCleanupConn:Disconnect(); fpsCleanupConn = nil end
     pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level08
-        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+        Lighting.GlobalShadows = true
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
     end)
-    Lighting.GlobalShadows    = savedLighting.shadows
-    Lighting.FogEnd           = savedLighting.fogEnd
-    Lighting.Brightness       = savedLighting.brightness
-    Lighting.EnvironmentDiffuseScale  = 1
-    Lighting.EnvironmentSpecularScale = 1
-    pcall(function() Lighting.ShadowSoftness = savedLighting.shadowSoft end)
+
     for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("BlurEffect") or v:IsA("BloomEffect")
-        or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect")
-        or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") then
+        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
+           or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") then
             v.Enabled = true
         end
     end
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("ParticleEmitter") or v:IsA("Smoke")
-        or v:IsA("Fire") or v:IsA("Sparkles") then
-            v.Enabled = true
-        elseif v:IsA("Decal") or v:IsA("Texture") then
-            v.Transparency = 0
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = 0
+        end
+        if obj:IsA("ParticleEmitter") or obj:IsA("Smoke")
+           or obj:IsA("Fire") or obj:IsA("Sparkles") then
+            obj.Enabled = true
         end
     end
 end
 
-local function setFPS(on)
-    states.fps = on
-    if on then pcall(deepFPS) else pcall(restoreFPS) end
-end
+-- ============ CHỨC NĂNG GIẢM PING ============
+local function applyPingBoost()
+    -- Đặt PhysicsStepping thấp để giảm tải network
+    pcall(function()
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+        settings().Physics.AllowSleep = true
+    end)
 
--- ====================== 📡 GIẢM PING NÂNG CAO ======================
-local pingCleanupConn
-
-local function deepPing()
-    -- 1) Tắt hiệu ứng network nặng
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Trail") or v:IsA("Beam") then
-            v.Enabled = false
-        elseif v:IsA("Sound") then
-            v.Playing = false
-            v.Volume = 0
+    -- Ưu tiên network update
+    pcall(function()
+        if Stats then
+            Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
         end
-    end
+    end)
 
-    -- 2) Tắt animation của người chơi khác (giảm replication)
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character then
-            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-            local anim = hum and hum:FindFirstChildOfClass("Animator")
-            if anim then
-                for _, tr in ipairs(anim:GetPlayingAnimationTracks()) do
-                    tr:Stop()
-                end
+    -- Giảm tần suất heartbeat của nhân vật để giảm lag
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = part.CanCollide
+                pcall(function() part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5) end)
             end
         end
     end
 
-    -- 3) Physics & Network
-    pcall(function() Lighting.ShadowSoftness = 0 end)
-    pcall(function() settings().Physics.AllowSleep = true end)
-    pcall(function() settings().Physics.PhysicsEnvironmentalThrottle =
-        Enum.EnviromentalPhysicsThrottle.DefaultAuto end)
-    pcall(function() settings().Network.IncomingReplicationLag = 0 end)
-
-    -- 4) Auto-cleanup effect mới
-    if pingCleanupConn then pingCleanupConn:Disconnect() end
-    pingCleanupConn = workspace.DescendantAdded:Connect(function(v)
-        if not states.ping then return end
-        if v:IsA("Trail") or v:IsA("Beam") then
-            v.Enabled = false
-        elseif v:IsA("Sound") then
-            v.Volume = 0
+    -- Garbage collector định kỳ
+    if connections.pingLoop then connections.pingLoop:Disconnect() end
+    connections.pingLoop = task.spawn(function()
+        while pingEnabled do
+            pcall(function() collectgarbage("collect") end)
+            task.wait(3)
         end
     end)
 end
 
 local function restorePing()
-    if pingCleanupConn then pingCleanupConn:Disconnect(); pingCleanupConn = nil end
     pcall(function()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Trail") or v:IsA("Beam") then
-                v.Enabled = true
-            elseif v:IsA("Sound") then
-                v.Volume = 0.5
-            end
-        end
-        Lighting.ShadowSoftness = 0.2
+        settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
     end)
+    if connections.pingLoop then
+        pcall(function() connections.pingLoop:Disconnect() end)
+        connections.pingLoop = nil
+    end
 end
 
-local function setPing(on)
-    states.ping = on
-    if on then pcall(deepPing) else pcall(restorePing) end
-end
+-- ============ XỬ LÝ NÚT BẬT/TẮT MENU ============
+toggleBtn.MouseButton1Click:Connect(function()
+    menuOpen = not menuOpen
+    mainMenu.Visible = menuOpen
+    if menuOpen then
+        toggleBtn.BackgroundColor3 = COLOR.BTN_ON
+    else
+        toggleBtn.BackgroundColor3 = COLOR.BG_HEADER
+    end
+end)
 
--- ====================== ⛏️ X2 SWING (0.02) ======================
-local swingConn
-local function getPickaxe()
-    local char = player.Character
-    return char and char:FindFirstChildOfClass("Tool")
-end
-
-local function applySwing(on)
-    if swingConn then swingConn:Disconnect(); swingConn = nil end
-    if not on then return end
-    swingConn = RunService.Heartbeat:Connect(function()
-        local tool = getPickaxe()
-        if not tool then return end
-        for _, v in ipairs(tool:GetDescendants()) do
-            if v:IsA("NumberValue") then
-                local n = v.Name:lower()
-                if n:find("cooldown") or n:find("delay")
-                or n:find("wait") or n:find("rate") or n:find("swing") then
-                    v.Value = 0.02
-                end
-            end
-        end
-        for _, attr in ipairs(tool:GetAttributes()) do
-            local n = attr:lower()
-            if n:find("cooldown") or n:find("delay")
-            or n:find("rate") or n:find("swing") then
-                pcall(function() tool:SetAttribute(attr, 0.02) end)
-            end
-        end
-        local char = player.Character
-        local hum  = char and char:FindFirstChildOfClass("Humanoid")
-        local animator = hum and hum:FindFirstChildOfClass("Animator")
-        if animator then
-            for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
-                local an = tr.Animation and tr.Animation.Name:lower() or ""
-                if an:find("swing") or an:find("pick")
-                or an:find("hit") or an:find("mine") then
-                    tr:AdjustSpeed(4)
-                end
-            end
-        end
-    end)
-end
-
--- ====================== NÚT ======================
-local fpsBtn,    fpsSt    = createBtn("🚀\nFPS++\n(Nâng cao)")
-local pingBtn,   pingSt   = createBtn("📡\nPING++\n(Nâng cao)")
-local x2Btn,     x2St     = createBtn("⛏️\nX2 Swing\n(0.02)")
-local allOnBtn,  allOnSt  = createBtn("✅\nBật Tất Cả")
-local allOffBtn, allOffSt = createBtn("❌\nTắt Tất Cả")
-
+-- ============ XỬ LÝ FPS ============
 fpsBtn.MouseButton1Click:Connect(function()
-    setFPS(not states.fps)
-    setState(fpsBtn, fpsSt, states.fps)
-end)
-pingBtn.MouseButton1Click:Connect(function()
-    setPing(not states.ping)
-    setState(pingBtn, pingSt, states.ping)
-end)
-x2Btn.MouseButton1Click:Connect(function()
-    states.x2 = not states.x2
-    applySwing(states.x2)
-    setState(x2Btn, x2St, states.x2)
-end)
-allOnBtn.MouseButton1Click:Connect(function()
-    setFPS(true);  setState(fpsBtn,  fpsSt,  true)
-    setPing(true); setState(pingBtn, pingSt, true)
-    states.x2 = true; applySwing(true)
-    setState(x2Btn, x2St, true)
-end)
-allOffBtn.MouseButton1Click:Connect(function()
-    setFPS(false);  setState(fpsBtn,  fpsSt,  false)
-    setPing(false); setState(pingBtn, pingSt, false)
-    states.x2 = false; applySwing(false)
-    setState(x2Btn, x2St, false)
+    fpsEnabled = not fpsEnabled
+    if fpsEnabled then
+        fpsBoostLvl = 200
+        fpsBtn.BackgroundColor3 = COLOR.BTN_ON
+        fpsLabel.Text = "Tăng FPS  [+"..fpsBoostLvl.."%]"
+        applyFPSBoost()
+        setStatus("✅ FPS Boost: BẬT (+200%)")
+    else
+        fpsBoostLvl = 0
+        fpsBtn.BackgroundColor3 = COLOR.BTN_OFF
+        fpsLabel.Text = "Tăng FPS  [OFF]"
+        restoreFPS()
+        setStatus("❌ FPS Boost: TẮT")
+    end
 end)
 
-print("[Boost Execute v3] ⚡ FPS++ & PING++ Loaded! (X2 = 0.02)")
+-- ============ XỬ LÝ PING ============
+pingBtn.MouseButton1Click:Connect(function()
+    pingEnabled = not pingEnabled
+    if pingEnabled then
+        pingBoostLvl = 200
+        pingBtn.BackgroundColor3 = COLOR.BTN_ON
+        pingLabel.Text = "Giảm Ping  [-"..pingBoostLvl.."%]"
+        applyPingBoost()
+        setStatus("✅ Ping Boost: BẬT (-200%)")
+    else
+        pingBoostLvl = 0
+        pingBtn.BackgroundColor3 = COLOR.BTN_OFF
+        pingLabel.Text = "Giảm Ping  [OFF]"
+        restorePing()
+        setStatus("❌ Ping Boost: TẮT")
+    end
+end)
+
+-- ============ HỖ TRỢ KÉO THẢ (Delta Android) ============
+local function makeDraggable(frame)
+    local dragging, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+           or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+makeDraggable(toggleBtn)
+makeDraggable(mainMenu)
+-- bỏ Draggable mặc định để tránh xung đột trên Delta
+toggleBtn.Draggable = false
+mainMenu.Draggable = false
+
+print("[Booster Hub] Đã load thành công cho Delta Android!")
+setStatus("Booster Hub đã sẵn sàng.")
